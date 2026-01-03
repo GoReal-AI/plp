@@ -1,0 +1,60 @@
+{
+  "name": "@plp/client",
+  "version": "1.0.0",
+  "description": "Official JavaScript/TypeScript client for PLP (Prompt Library Protocol)",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "plp",
+    "prompt",
+    "library",
+    "protocol",
+    "ai",
+    "llm",
+    "openai",
+    "anthropic",
+    "prompt-management"
+  ],
+  "author": "GoReal.AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gorealai/plp.git",
+    "directory": "sdks/js"
+  },
+  "bugs": {
+    "url": "https://github.com/gorealai/plp/issues"
+  },
+  "homepage": "https://github.com/gorealai/plp#readme",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

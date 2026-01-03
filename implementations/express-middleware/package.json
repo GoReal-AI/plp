@@ -1,0 +1,66 @@
+{
+  "name": "@plp/express-middleware",
+  "version": "1.0.0",
+  "description": "Express middleware for building PLP-compliant servers",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "plp",
+    "express",
+    "middleware",
+    "prompt",
+    "library",
+    "protocol",
+    "ai",
+    "server"
+  ],
+  "author": "GoReal.AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gorealai/plp.git",
+    "directory": "implementations/express-middleware"
+  },
+  "bugs": {
+    "url": "https://github.com/gorealai/plp/issues"
+  },
+  "homepage": "https://github.com/gorealai/plp#readme",
+  "peerDependencies": {
+    "express": "^4.18.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/supertest": "^6.0.3",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "express": "^4.18.2",
+    "supertest": "^6.3.3",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

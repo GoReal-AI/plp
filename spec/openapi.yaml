@@ -1,0 +1,373 @@
+openapi: 3.0.3
+info:
+  title: PLP - Prompt Library Protocol
+  description: |
+    A lightweight, RESTful specification for decoupling AI prompts from application code.
+    
+    PLP defines a universal Envelope for prompt data and a strict API contract for storage and retrieval.
+    
+    Learn more at [plp-standard](https://github.com/gorealai/plp)
+  version: 1.0.0
+  contact:
+    name: GoReal.AI
+    url: https://goreal.ai
+  license:
+    name: MIT
+    url: https://github.com/gorealai/plp/blob/main/LICENSE
+
+servers:
+  - url: https://prompts.goreal.ai/v1
+    description: Example PLP server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: discovery
+    description: Server discovery and capabilities
+  - name: prompts
+    description: Prompt CRUD operations
+
+security:
+  - bearerAuth: []
+  - {}  # Allow requests without authentication
+
+paths:
+  /.well-known/plp:
+    get:
+      tags:
+        - discovery
+      summary: Discover server capabilities
+      description: |
+        Returns information about the PLP server and its capabilities.
+        This endpoint SHOULD NOT require authentication.
+      operationId: getDiscovery
+      security: []  # No auth required
+      responses:
+        '200':
+          description: Server discovery information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Discovery'
+              example:
+                plp_version: "1.0"
+                server: "my-plp-server"
+                capabilities:
+                  versioning: true
+                  list: false
+                  search: false
+
+  /prompts/{prompt_id}:
+    get:
+      tags:
+        - prompts
+      summary: Retrieve latest version of a prompt
+      description: |
+        Fetches the latest version of a prompt by its unique ID.
+        If you need a specific version, use `/prompts/{prompt_id}/{version}`.
+      operationId: getPrompt
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: Unique prompt identifier (e.g., "marketing/welcome-email")
+          schema:
+            type: string
+            example: marketing/welcome-email
+      responses:
+        '200':
+          description: Successfully retrieved prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptEnvelope'
+              examples:
+                welcomeEmail:
+                  value:
+                    id: marketing/welcome-email
+                    content: "Hello {{name}}, welcome to {{product}}!"
+                    meta:
+                      version: "1.2.0"
+                      author: shimon
+                      description: Sent on user signup
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Prompt not found
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+
+    put:
+      tags:
+        - prompts
+      summary: Create or update a prompt
+      description: |
+        Idempotent upsert operation. Creates a new prompt if it doesn't exist,
+        or updates it if it does. Optionally stores version history (implementation-specific).
+      operationId: putPrompt
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: Unique prompt identifier (e.g., "marketing/welcome-email")
+          schema:
+            type: string
+            example: support/faq-bot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptInput'
+            examples:
+              createPrompt:
+                value:
+                  content: "You are a helpful FAQ bot. Answer: {{question}}"
+                  meta:
+                    version: "1.0.0"
+                    author: yoad
+              updatePrompt:
+                value:
+                  content: "Updated prompt content with {{variable}}"
+                  meta:
+                    version: "2.0.0"
+                    description: New iteration
+      responses:
+        '201':
+          description: Successfully created new prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptEnvelope'
+              example:
+                id: support/faq-bot
+                content: "You are a helpful FAQ bot. Answer: {{question}}"
+                meta:
+                  version: "1.0.0"
+                  author: yoad
+        '200':
+          description: Successfully updated existing prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptEnvelope'
+        '400':
+          description: Invalid request (malformed JSON or missing required fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Invalid request - content field is required
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - prompts
+      summary: Delete a prompt
+      description: |
+        Removes a prompt and all its versions permanently.
+        This operation is idempotent (returns 404 if prompt doesn't exist).
+      operationId: deletePrompt
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: Unique prompt identifier
+          schema:
+            type: string
+            example: deprecated/old-prompt
+      responses:
+        '204':
+          description: Successfully deleted (no content returned)
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Prompt not found
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /prompts/{prompt_id}/{version}:
+    get:
+      tags:
+        - prompts
+      summary: Retrieve specific version of a prompt
+      description: Fetches a specific version of a prompt by its ID and version number.
+      operationId: getPromptVersion
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: Unique prompt identifier
+          schema:
+            type: string
+            example: marketing/welcome-email
+        - name: version
+          in: path
+          required: true
+          description: Semantic version number (e.g., "1.2.0")
+          schema:
+            type: string
+            example: "1.0.0"
+      responses:
+        '200':
+          description: Successfully retrieved prompt version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptEnvelope'
+              example:
+                id: marketing/welcome-email
+                content: "Hello {{name}}!"
+                meta:
+                  version: "1.0.0"
+                  author: shimon
+        '404':
+          description: Prompt or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Version 1.0.0 not found
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Optional API key for authentication (Bearer token)
+
+  schemas:
+    PromptEnvelope:
+      type: object
+      required:
+        - id
+        - content
+        - meta
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the prompt (supports namespacing with "/")
+          example: marketing/welcome-email
+          pattern: '^[a-zA-Z0-9/_-]+$'
+        content:
+          type: string
+          description: The raw prompt template (can include variables like {{name}})
+          example: "Hello {{name}}, welcome to {{product}}!"
+        meta:
+          type: object
+          description: Metadata container (must exist, can be empty)
+          properties:
+            version:
+              type: string
+              description: Semantic version (e.g., "1.2.0")
+              example: "1.2.0"
+            author:
+              type: string
+              description: Creator identifier
+              example: shimon
+            description:
+              type: string
+              description: Human-readable description
+              example: Sent on user signup
+            model_config:
+              type: object
+              description: Optional LLM configuration hints
+              additionalProperties: true
+              example:
+                temperature: 0.7
+                max_tokens: 500
+          additionalProperties: true
+
+    PromptInput:
+      type: object
+      required:
+        - content
+        - meta
+      properties:
+        content:
+          type: string
+          description: The raw prompt template
+          example: "You are a helpful assistant. Task: {{task}}"
+        meta:
+          type: object
+          description: Metadata container (can be empty object {})
+          additionalProperties: true
+          example:
+            version: "1.0.0"
+            author: yoad
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: Prompt not found
+
+    Discovery:
+      type: object
+      required:
+        - plp_version
+        - capabilities
+      properties:
+        plp_version:
+          type: string
+          description: The PLP protocol version supported by this server
+          example: "1.0"
+        server:
+          type: string
+          description: Optional server implementation name
+          example: "my-plp-server"
+        capabilities:
+          type: object
+          required:
+            - versioning
+            - list
+            - search
+          properties:
+            versioning:
+              type: boolean
+              description: Whether the server maintains version history
+              example: true
+            list:
+              type: boolean
+              description: Whether listing prompts is supported
+              example: false
+            search:
+              type: boolean
+              description: Whether search is supported
+              example: false
+          additionalProperties: true
