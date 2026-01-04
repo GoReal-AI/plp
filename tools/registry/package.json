@@ -1,11 +1,11 @@
 {
-  "name": "@plp/compliance",
-  "version": "1.0.0",
-  "description": "Compliance test suite for PLP (Prompt Library Protocol) servers",
+  "name": "@plp/registry",
+  "version": "2.0.0",
+  "description": "PLP Registry CLI - Manage PLP server registration, compliance testing, and listing on plp.pub",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "plp-compliance": "./dist/cli.js"
+    "plp-registry": "./dist/cli.js"
   },
   "exports": {
     ".": {
@@ -30,16 +30,18 @@
     "prompt",
     "library",
     "protocol",
+    "registry",
     "compliance",
     "testing",
-    "validation"
+    "validation",
+    "management"
   ],
   "author": "GoReal.AI",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/gorealai/plp.git",
-    "directory": "tools/compliance"
+    "directory": "tools/registry"
   },
   "bugs": {
     "url": "https://github.com/gorealai/plp/issues"
