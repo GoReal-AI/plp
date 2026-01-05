@@ -1,5 +1,5 @@
 /**
- * @plp/registry - PLP Registry CLI & Library
+ * plp-registry - PLP Registry CLI & Library
  *
  * Manage PLP server registration, compliance testing, and listing on plp.pub
  *
