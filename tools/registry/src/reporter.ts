@@ -74,8 +74,33 @@ export function formatText(report: ComplianceReport, useColors = true): string {
       const duration = dim(`(${test.duration.toFixed(0)}ms)`);
       lines.push(`${testIcon} ${test.name} ${duration}`);
 
-      if (!test.passed && test.error) {
-        lines.push(red(`      Error: ${test.error}`));
+      if (!test.passed) {
+        if (test.error) {
+          lines.push(red(`      Error: ${test.error}`));
+        }
+
+        // Show request details for failed tests
+        if (test.request) {
+          lines.push(dim(`      Request: ${test.request.method} ${test.request.url}`));
+          if (test.request.headers && Object.keys(test.request.headers).length > 0) {
+            lines.push(dim(`      Headers:`));
+            for (const [key, value] of Object.entries(test.request.headers)) {
+              // Mask token for security but show it's present
+              if (key === 'Authorization' && value) {
+                const tokenPreview = value.length > 20
+                  ? value.substring(0, 20) + '...'
+                  : value;
+                lines.push(dim(`        ${key}: ${tokenPreview}`));
+              } else {
+                lines.push(dim(`        ${key}: ${value}`));
+              }
+            }
+          }
+        }
+
+        if (test.response) {
+          lines.push(dim(`      Response: ${test.response.status}`));
+        }
       }
     }
     lines.push('');

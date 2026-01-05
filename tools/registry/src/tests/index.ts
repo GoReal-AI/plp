@@ -12,6 +12,10 @@ interface TestDefinition {
   fn: TestFn;
 }
 
+// Track last request/response for error reporting
+let lastRequestDetails: { url: string; method: string; headers: Record<string, string> } | null = null;
+let lastResponseStatus: number | null = null;
+
 /**
  * Make an HTTP request with timeout
  */
@@ -19,16 +23,27 @@ async function request(
   url: string,
   options: RequestInit & { timeout?: number } = {}
 ): Promise<Response> {
-  const { timeout = 10000, ...fetchOptions } = options;
+  const { timeout = 10000, method = 'GET', headers, ...fetchOptions } = options;
+
+  // Track this request for error reporting
+  lastRequestDetails = {
+    url,
+    method: method as string,
+    headers: { ...(headers as Record<string, string> || {}) },
+  };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
     const response = await fetch(url, {
+      method,
+      headers,
       ...fetchOptions,
       signal: controller.signal,
     });
+
+    lastResponseStatus = response.status;
     return response;
   } finally {
     clearTimeout(timeoutId);
@@ -555,6 +570,10 @@ const discoveryTests: TestDefinition[] = [
 async function runTest(test: TestDefinition, ctx: TestContext): Promise<TestResult> {
   const startTime = performance.now();
 
+  // Reset tracking before each test
+  lastRequestDetails = null;
+  lastResponseStatus = null;
+
   try {
     await test.fn(ctx);
     return {
@@ -570,6 +589,8 @@ async function runTest(test: TestDefinition, ctx: TestContext): Promise<TestResu
       passed: false,
       error: error instanceof Error ? error.message : String(error),
       duration: performance.now() - startTime,
+      request: lastRequestDetails || undefined,
+      response: lastResponseStatus !== null ? { status: lastResponseStatus } : undefined,
     };
   }
 }

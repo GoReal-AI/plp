@@ -12,6 +12,14 @@ export interface TestResult {
   passed: boolean;
   error?: string;
   duration: number;
+  request?: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+  };
+  response?: {
+    status: number;
+  };
 }
 
 export interface TestGroup {
