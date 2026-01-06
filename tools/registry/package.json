@@ -1,6 +1,6 @@
 {
   "name": "plp-registry",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "PLP Registry CLI - Manage PLP server registration, compliance testing, and listing on plp.pub",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
