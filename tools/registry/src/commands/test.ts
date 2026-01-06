@@ -25,6 +25,7 @@ export async function testCommand(
     const groups = await runComplianceTests(baseUrl, {
       authToken: options.token,
       timeout,
+      debug: options.debug,
     });
 
     // Generate and output report

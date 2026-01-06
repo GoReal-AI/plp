@@ -15,6 +15,7 @@ interface TestDefinition {
 // Track last request/response for error reporting
 let lastRequestDetails: { url: string; method: string; headers: Record<string, string> } | null = null;
 let lastResponseStatus: number | null = null;
+let debugMode = false;
 
 /**
  * Make an HTTP request with timeout
@@ -23,7 +24,7 @@ async function request(
   url: string,
   options: RequestInit & { timeout?: number } = {}
 ): Promise<Response> {
-  const { timeout = 10000, method = 'GET', headers, ...fetchOptions } = options;
+  const { timeout = 10000, method = 'GET', headers, body, ...fetchOptions } = options;
 
   // Track this request for error reporting
   lastRequestDetails = {
@@ -32,6 +33,15 @@ async function request(
     headers: { ...(headers as Record<string, string> || {}) },
   };
 
+  if (debugMode) {
+    console.log('\n[DEBUG] ========== REQUEST ==========');
+    console.log(`[DEBUG] ${method} ${url}`);
+    console.log('[DEBUG] Headers:', JSON.stringify(headers, null, 2));
+    if (body) {
+      console.log('[DEBUG] Body:', body);
+    }
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -39,11 +49,38 @@ async function request(
     const response = await fetch(url, {
       method,
       headers,
+      body,
       ...fetchOptions,
       signal: controller.signal,
     });
 
     lastResponseStatus = response.status;
+
+    if (debugMode) {
+      console.log('\n[DEBUG] ========== RESPONSE ==========');
+      console.log(`[DEBUG] Status: ${response.status} ${response.statusText}`);
+      console.log('[DEBUG] Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+
+      // Clone response to read body without consuming it
+      const clonedResponse = response.clone();
+      const contentType = response.headers.get('content-type');
+
+      try {
+        if (contentType?.includes('application/json')) {
+          const jsonBody = await clonedResponse.json();
+          console.log('[DEBUG] Body:', JSON.stringify(jsonBody, null, 2));
+        } else {
+          const textBody = await clonedResponse.text();
+          if (textBody) {
+            console.log('[DEBUG] Body:', textBody.substring(0, 500));
+          }
+        }
+      } catch (e) {
+        console.log('[DEBUG] Body: (unable to parse)');
+      }
+      console.log('[DEBUG] ================================\n');
+    }
+
     return response;
   } finally {
     clearTimeout(timeoutId);
@@ -615,14 +652,26 @@ async function runTestGroup(
  */
 export async function runComplianceTests(
   baseUrl: string,
-  options: { authToken?: string; timeout?: number } = {}
+  options: { authToken?: string; timeout?: number; debug?: boolean } = {}
 ): Promise<TestGroup[]> {
+  // Set debug mode globally
+  debugMode = options.debug ?? false;
+
   const ctx: TestContext = {
     baseUrl: baseUrl.replace(/\/$/, ''), // Remove trailing slash
     authToken: options.authToken,
     testPromptId: generateTestId(),
     timeout: options.timeout ?? 10000,
+    debug: options.debug,
   };
+
+  if (debugMode) {
+    console.log('[DEBUG] Starting compliance tests');
+    console.log('[DEBUG] Base URL:', ctx.baseUrl);
+    console.log('[DEBUG] Auth Token:', ctx.authToken ? 'Present' : 'None');
+    console.log('[DEBUG] Test Prompt ID:', ctx.testPromptId);
+    console.log('[DEBUG] Timeout:', ctx.timeout, 'ms\n');
+  }
 
   const groups: TestGroup[] = [];
 

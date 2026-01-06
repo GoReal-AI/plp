@@ -45,6 +45,7 @@ export interface TestContext {
   authToken?: string;
   testPromptId: string;
   timeout: number;
+  debug?: boolean;
 }
 
 export interface PromptEnvelope {
@@ -96,6 +97,7 @@ export interface InstallResponse {
 
 export interface ActivateRequest {
   serverUrl: string;
+  apiKey?: string;
 }
 
 export interface ActivateResponse {
@@ -166,6 +168,8 @@ export interface CommandOptions {
   json?: boolean;
   color?: boolean;
   config?: string;
+  debug?: boolean;
+  apiKey?: string;
 }
 
 /**
@@ -174,6 +178,7 @@ export interface CommandOptions {
 export interface TestCommandOptions extends CommandOptions {
   token?: string;
   timeout?: string;
+  debug?: boolean;
 }
 
 /**

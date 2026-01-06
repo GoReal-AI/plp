@@ -7,6 +7,13 @@ import { ApiError, AuthError, NetworkError } from './errors.js';
 export const REGISTRY_URL = 'https://plp-registry.pages.dev';
 const DEFAULT_TIMEOUT = 30000;
 
+// Global debug flag
+let debugEnabled = false;
+
+export function setDebugMode(enabled: boolean): void {
+  debugEnabled = enabled;
+}
+
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
@@ -66,6 +73,16 @@ export async function makeRequest<T = unknown>(
       headers['Content-Type'] = 'application/json';
     }
 
+    // Debug: Log request
+    if (debugEnabled) {
+      console.log('\n[DEBUG] ========== REGISTRY API REQUEST ==========');
+      console.log(`[DEBUG] ${method} ${url}`);
+      console.log('[DEBUG] Headers:', JSON.stringify(headers, null, 2));
+      if (body !== undefined) {
+        console.log('[DEBUG] Body:', JSON.stringify(body, null, 2));
+      }
+    }
+
     const response = await fetch(url, {
       method,
       headers,
@@ -82,6 +99,15 @@ export async function makeRequest<T = unknown>(
     } else {
       const text = await response.text();
       data = text || undefined;
+    }
+
+    // Debug: Log response
+    if (debugEnabled) {
+      console.log('\n[DEBUG] ========== REGISTRY API RESPONSE ==========');
+      console.log(`[DEBUG] Status: ${response.status} ${response.statusText}`);
+      console.log('[DEBUG] Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+      console.log('[DEBUG] Body:', typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+      console.log('[DEBUG] ============================================\n');
     }
 
     // Handle error responses

@@ -3,7 +3,7 @@
  */
 
 import { readConfig, updateConfig, validateConfig } from '../lib/config.js';
-import { makeRequest, endpoints } from '../lib/http.js';
+import { makeRequest, endpoints, setDebugMode } from '../lib/http.js';
 import { formatSuccess, print } from '../lib/output.js';
 import { handleError, ValidationError } from '../lib/errors.js';
 import type { CommandOptions, ActivateRequest, ActivateResponse } from '../types.js';
@@ -16,6 +16,10 @@ export async function activateCommand(
   options: CommandOptions
 ): Promise<void> {
   try {
+    // Enable debug mode if requested
+    if (options.debug) {
+      setDebugMode(true);
+    }
     // Validate server URL
     const normalizedUrl = validateAndNormalizeUrl(serverUrl);
 
@@ -26,6 +30,7 @@ export async function activateCommand(
     // Prepare request
     const body: ActivateRequest = {
       serverUrl: normalizedUrl,
+      apiKey: options.apiKey,
     };
 
     // Make API request

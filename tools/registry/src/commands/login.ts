@@ -3,7 +3,7 @@
  */
 
 import { readConfig, validateConfig } from '../lib/config.js';
-import { makeRequest, endpoints } from '../lib/http.js';
+import { makeRequest, endpoints, setDebugMode } from '../lib/http.js';
 import { formatSuccess, formatHighlight, print } from '../lib/output.js';
 import { handleError } from '../lib/errors.js';
 import type { CommandOptions, LoginResponse } from '../types.js';
@@ -13,6 +13,11 @@ import type { CommandOptions, LoginResponse } from '../types.js';
  */
 export async function loginCommand(options: CommandOptions): Promise<void> {
   try {
+    // Enable debug mode if requested
+    if (options.debug) {
+      setDebugMode(true);
+    }
+
     // Read and validate config
     const config = await readConfig(options.config);
     validateConfig(config, ['deploymentHash']);
