@@ -25,7 +25,7 @@ npx plp-registry <command>
 Before registering, verify your PLP server is compliant:
 
 ```bash
-plp-registry test https://api.example.com/v1
+plp test https://api.example.com/v1
 ```
 
 ### 2. Install (Register with plp.pub)
@@ -33,7 +33,7 @@ plp-registry test https://api.example.com/v1
 Get your installation hash from [plp.pub](https://plp.pub) and run:
 
 ```bash
-plp-registry install <hash> --vendor-name "Your Company"
+plp install <hash> --vendor-name "Your Company"
 ```
 
 ### 3. Activate Your Server
@@ -41,7 +41,13 @@ plp-registry install <hash> --vendor-name "Your Company"
 Connect your PLP server to the registry:
 
 ```bash
-plp-registry activate https://api.example.com/v1
+plp activate https://api.example.com/v1
+```
+
+For servers requiring authentication:
+
+```bash
+plp activate https://api.example.com/v1 --api-key YOUR_API_KEY
 ```
 
 ### 4. Generate Login Token (for Web Dashboard)
@@ -49,7 +55,7 @@ plp-registry activate https://api.example.com/v1
 After activation, generate a temporary login token to access the web dashboard:
 
 ```bash
-plp-registry login
+plp login
 ```
 
 This returns a 1-hour session token for the web UI at plp.pub.
@@ -60,13 +66,13 @@ Update your listing details using the CLI:
 
 ```bash
 # Update vendor name
-plp-registry update-name "New Company Name"
+plp update-name "New Company Name"
 
 # Update description
-plp-registry update-description "Our amazing PLP service"
+plp update-description "Our amazing PLP service"
 
 # Set visibility
-plp-registry set-visibility public
+plp set-visibility public
 ```
 
 ## Commands
@@ -76,12 +82,13 @@ plp-registry set-visibility public
 Run compliance tests against a PLP server.
 
 ```bash
-plp-registry test https://api.example.com/v1 [options]
+plp test https://api.example.com/v1 [options]
 ```
 
 **Options:**
 - `-t, --token <token>` - Bearer token for authentication
 - `--timeout <ms>` - Request timeout (default: 10000)
+- `--debug` - Enable debug mode (show full request/response details)
 - `--json` - Output as JSON
 - `--no-color` - Disable colored output
 
@@ -95,13 +102,14 @@ plp-registry test https://api.example.com/v1 [options]
 Complete installation with plp.pub registry.
 
 ```bash
-plp-registry install <hash> --vendor-name "Your Company" [options]
+plp install <hash> --vendor-name "Your Company" [options]
 ```
 
 **Options:**
 - `--vendor-name <name>` - Your vendor/organization name (required)
 - `--vendor-slug <slug>` - Custom slug (auto-generated if not provided)
 - `--email <email>` - Contact email
+- `--debug` - Enable debug mode (show full request/response details)
 - `--json` - Output as JSON
 - `--config <path>` - Custom config file path
 
@@ -110,10 +118,12 @@ plp-registry install <hash> --vendor-name "Your Company" [options]
 Activate your PLP server with the registry.
 
 ```bash
-plp-registry activate https://api.example.com/v1 [options]
+plp activate https://api.example.com/v1 [options]
 ```
 
 **Options:**
+- `--api-key <key>` - API key for authenticating with your PLP server
+- `--debug` - Enable debug mode (show full request/response details)
 - `--json` - Output as JSON
 - `--config <path>` - Custom config file path
 
@@ -122,13 +132,14 @@ plp-registry activate https://api.example.com/v1 [options]
 Generate a temporary login token for the web dashboard.
 
 ```bash
-plp-registry login [options]
+plp login [options]
 ```
 
 **Requirements:**
 - Must run `activate` first to get a deployment hash
 
 **Options:**
+- `--debug` - Enable debug mode (show full request/response details)
 - `--json` - Output as JSON
 - `--config <path>` - Custom config file path
 
@@ -139,7 +150,7 @@ The token expires after 1 hour and can be used to access the plp.pub web dashboa
 Update your vendor name in the registry.
 
 ```bash
-plp-registry update-name "New Company Name" [options]
+plp update-name "New Company Name" [options]
 ```
 
 ### `update-description <description>`
@@ -147,7 +158,7 @@ plp-registry update-name "New Company Name" [options]
 Update your listing description.
 
 ```bash
-plp-registry update-description "Your service description" [options]
+plp update-description "Your service description" [options]
 ```
 
 ### `set-visibility <visibility>`
@@ -155,7 +166,7 @@ plp-registry update-description "Your service description" [options]
 Set listing visibility.
 
 ```bash
-plp-registry set-visibility public  # or private
+plp set-visibility public  # or private
 ```
 
 ### `delete-listing`
@@ -163,7 +174,7 @@ plp-registry set-visibility public  # or private
 Permanently delete your listing from the registry.
 
 ```bash
-plp-registry delete-listing --confirm
+plp delete-listing --confirm
 ```
 
 **Options:**
@@ -267,7 +278,7 @@ If you were using `@plp/compliance`, the compliance testing functionality is unc
 plp-compliance https://api.example.com/v1
 
 # New
-plp-registry test https://api.example.com/v1
+plp test https://api.example.com/v1
 ```
 
 Library imports remain compatible:

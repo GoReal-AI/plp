@@ -23,9 +23,9 @@ import type {
 } from './types.js';
 
 program
-  .name('plp-registry')
+  .name('plp')
   .description('PLP Registry CLI - Manage your PLP server listing on plp.pub')
-  .version('2.0.0');
+  .version('0.0.2');
 
 // =============================================================================
 // Test Command
