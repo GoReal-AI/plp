@@ -44,7 +44,7 @@ What actually happened.
 - OS: [e.g. macOS, Linux, Windows]
 - Node.js version: [e.g. 20.10.0]
 - Python version: [e.g. 3.11.0]
-- Package version: [e.g. @plp/client@1.0.0]
+- Package version: [e.g. @goreal-ai/plp-client@1.0.0]
 
 ## Additional Context
 

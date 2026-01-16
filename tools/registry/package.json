@@ -1,5 +1,5 @@
 {
-  "name": "plp-registry",
+  "name": "@goreal-ai/plp-registry",
   "version": "0.0.3",
   "description": "PLP Registry CLI - Manage PLP server registration, compliance testing, and listing on plp.pub",
   "main": "dist/index.js",

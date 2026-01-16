@@ -35,7 +35,7 @@ This creates:
 
 ```javascript
 // ✅ Clean, versioned, traceable
-import { PLPClient } from '@plp/client';
+import { PLPClient } from '@goreal-ai/plp-client';
 
 const plp = new PLPClient('https://prompts.goreal.ai');
 const prompt = await plp.get('marketing/welcome-email', '1.2.0');
@@ -69,7 +69,7 @@ Learn more: [Protocol Overview](spec/OVERVIEW.md) | [Full Specification](spec/SP
 
 ```bash
 # JavaScript/Node.js
-npm install @plp/client
+npm install @goreal-ai/plp-client
 
 # Python
 pip install plp-client
@@ -77,7 +77,7 @@ pip install plp-client
 
 **JavaScript Example:**
 ```javascript
-import { PLPClient } from '@plp/client';
+import { PLPClient } from '@goreal-ai/plp-client';
 
 const client = new PLPClient('https://your-plp-server.com', {
   apiKey: 'optional-key'
@@ -140,12 +140,12 @@ See [Full Specification](spec/SPEC.md) for details.
 ### Option 1: Express Middleware (Node.js)
 
 ```bash
-npm install @plp/express-middleware
+npm install @goreal-ai/plp-express-middleware
 ```
 
 ```javascript
 import express from 'express';
-import { plpMiddleware } from '@plp/express-middleware';
+import { plpMiddleware } from '@goreal-ai/plp-express-middleware';
 
 const app = express();
 
@@ -178,7 +178,7 @@ Or manually implement the [three endpoints](spec/SPEC.md#3-the-api-contract).
 
 | Language | Package | Status |
 |----------|---------|--------|
-| JavaScript/TypeScript | [`@plp/client`](sdks/js) | ✅ Ready |
+| JavaScript/TypeScript | [`@goreal-ai/plp-client`](sdks/js) | ✅ Ready |
 | Python | [`plp-client`](sdks/python) | ✅ Ready |
 | Go | `go-plp` | 🚧 Coming Soon |
 | Rust | `plp-rs` | 🚧 Coming Soon |

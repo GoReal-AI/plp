@@ -2,7 +2,7 @@
  * Basic usage example of PLP client
  */
 
-const { PLPClient } = require('@plp/client');
+const { PLPClient } = require('@goreal-ai/plp-client');
 
 async function main() {
   // Initialize client

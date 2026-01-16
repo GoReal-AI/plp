@@ -1,5 +1,5 @@
 /**
- * @plp/express-middleware - Express middleware for building PLP-compliant servers
+ * @goreal-ai/plp-express-middleware - Express middleware for building PLP-compliant servers
  * @license MIT
  */
 

@@ -517,8 +517,8 @@ curl -X DELETE https://prompts.example.com/v1/prompts/blog/intro
 
 ## 11. Reference Implementations
 
-- **Express Middleware (Node.js):** [@plp/express-middleware](../implementations/express-middleware)
-- **JavaScript Client:** [@plp/client](../sdks/js)
+- **Express Middleware (Node.js):** [@goreal-ai/plp-express-middleware](../implementations/express-middleware)
+- **JavaScript Client:** [@goreal-ai/plp-client](../sdks/js)
 - **Python Client:** [plp-client](../sdks/python)
 
 ---

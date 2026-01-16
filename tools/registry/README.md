@@ -1,4 +1,4 @@
-# plp-registry
+# @goreal-ai/plp-registry
 
 PLP Registry CLI for managing your PLP server listing on [plp.pub](https://plp.pub).
 
@@ -9,13 +9,13 @@ PLP Registry CLI for managing your PLP server listing on [plp.pub](https://plp.p
 ## Installation
 
 ```bash
-npm install -g plp-registry
+npm install -g @goreal-ai/plp-registry
 ```
 
 Or use directly with npx:
 
 ```bash
-npx plp-registry <command>
+npx @goreal-ai/plp-registry <command>
 ```
 
 ## Quick Start
@@ -232,7 +232,7 @@ import {
   readConfig,
   makeRequest,
   endpoints,
-} from 'plp-registry';
+} from '@goreal-ai/plp-registry';
 
 // Run compliance tests
 const groups = await runComplianceTests('https://api.example.com/v1', {
@@ -259,7 +259,7 @@ const response = await makeRequest(endpoints.login(), {
 ```yaml
 # GitHub Actions example
 - name: Test PLP Compliance
-  run: npx plp-registry test ${{ secrets.PLP_SERVER_URL }} --json > compliance.json
+  run: npx @goreal-ai/plp-registry test ${{ secrets.PLP_SERVER_URL }} --json > compliance.json
 
 - name: Check Compliance
   run: |
@@ -285,7 +285,7 @@ Library imports remain compatible:
 
 ```typescript
 // These still work
-import { runComplianceTests, formatReport } from 'plp-registry';
+import { runComplianceTests, formatReport } from '@goreal-ai/plp-registry';
 ```
 
 ## Requirements

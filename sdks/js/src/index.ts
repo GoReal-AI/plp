@@ -1,5 +1,5 @@
 /**
- * @plp/client - Official JavaScript/TypeScript client for PLP (Prompt Library Protocol)
+ * @goreal-ai/plp-client - Official JavaScript/TypeScript client for PLP (Prompt Library Protocol)
  * @license MIT
  */
 

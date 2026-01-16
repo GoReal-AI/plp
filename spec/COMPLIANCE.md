@@ -155,7 +155,7 @@ https://echostash.com/compliance
 
 **CLI tool** (for CI/CD pipelines):
 ```bash
-npx @plp/compliance https://your-server.com/v1
+npx @goreal-ai/plp-registry test https://your-server.com/v1
 ```
 
 **What gets tested:**

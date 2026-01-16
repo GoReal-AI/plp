@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core specification document (SPEC.md)
 - OpenAPI 3.0 definition
 - JSON Schema for validation
-- JavaScript/TypeScript SDK (`@plp/client`)
+- JavaScript/TypeScript SDK (`@goreal-ai/plp-client`)
 - Python SDK (`plp-client`)
-- Express middleware implementation (`@plp/express-middleware`)
+- Express middleware implementation (`@goreal-ai/plp-express-middleware`)
 - Comprehensive documentation and examples
 - MIT License
 - Contributing guidelines
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### SDKs
 
-- **JavaScript/TypeScript** (`@plp/client`)
+- **JavaScript/TypeScript** (`@goreal-ai/plp-client`)
   - Full TypeScript support
   - Async/await API
   - Comprehensive error handling
@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Implementations
 
-- **Express Middleware** (`@plp/express-middleware`)
+- **Express Middleware** (`@goreal-ai/plp-express-middleware`)
   - File-based storage out of the box
   - Optional authentication
   - Extensible storage interface

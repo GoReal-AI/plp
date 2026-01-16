@@ -2,7 +2,7 @@
  * Example: Using PLP with OpenAI
  */
 
-const { PLPClient } = require('@plp/client');
+const { PLPClient } = require('@goreal-ai/plp-client');
 const OpenAI = require('openai');
 
 async function main() {

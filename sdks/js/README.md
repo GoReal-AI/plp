@@ -1,7 +1,7 @@
-# @plp/client
+# @goreal-ai/plp-client
 
 [![PLP Compliant](https://img.shields.io/badge/PLP-Compliant-brightgreen)](https://github.com/gorealai/plp)
-[![npm version](https://img.shields.io/npm/v/@plp/client.svg)](https://www.npmjs.com/package/@plp/client)
+[![npm version](https://img.shields.io/npm/v/@goreal-ai/plp-client.svg)](https://www.npmjs.com/package/@goreal-ai/plp-client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 
 Official JavaScript/TypeScript client for **PLP (Prompt Library Protocol)**.
@@ -9,17 +9,17 @@ Official JavaScript/TypeScript client for **PLP (Prompt Library Protocol)**.
 ## Installation
 
 ```bash
-npm install @plp/client
+npm install @goreal-ai/plp-client
 # or
-yarn add @plp/client
+yarn add @goreal-ai/plp-client
 # or
-pnpm add @plp/client
+pnpm add @goreal-ai/plp-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { PLPClient } from '@plp/client';
+import { PLPClient } from '@goreal-ai/plp-client';
 
 const client = new PLPClient('https://prompts.goreal.ai', {
   apiKey: 'your-api-key' // Optional
@@ -133,7 +133,7 @@ interface PromptInput {
 ## Error Handling
 
 ```typescript
-import { PLPClient, PLPError } from '@plp/client';
+import { PLPClient, PLPError } from '@goreal-ai/plp-client';
 
 try {
   const prompt = await client.get('missing/prompt');
@@ -150,7 +150,7 @@ try {
 ### Using with OpenAI
 
 ```typescript
-import { PLPClient } from '@plp/client';
+import { PLPClient } from '@goreal-ai/plp-client';
 import OpenAI from 'openai';
 
 const plp = new PLPClient('https://prompts.goreal.ai');
@@ -168,7 +168,7 @@ const response = await openai.chat.completions.create({
 ### Using with Anthropic
 
 ```typescript
-import { PLPClient } from '@plp/client';
+import { PLPClient } from '@goreal-ai/plp-client';
 import Anthropic from '@anthropic-ai/sdk';
 
 const plp = new PLPClient('https://prompts.goreal.ai');

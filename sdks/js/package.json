@@ -1,5 +1,5 @@
 {
-  "name": "@plp/client",
+  "name": "@goreal-ai/plp-client",
   "version": "1.0.0",
   "description": "Official JavaScript/TypeScript client for PLP (Prompt Library Protocol)",
   "main": "dist/index.js",

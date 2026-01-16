@@ -1,5 +1,5 @@
 {
-  "name": "@plp/express-middleware",
+  "name": "@goreal-ai/plp-express-middleware",
   "version": "1.0.0",
   "description": "Express middleware for building PLP-compliant servers",
   "main": "dist/index.js",

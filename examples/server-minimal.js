@@ -3,7 +3,7 @@
  */
 
 const express = require('express');
-const { plpMiddleware } = require('@plp/express-middleware');
+const { plpMiddleware } = require('@goreal-ai/plp-express-middleware');
 
 const app = express();
 

@@ -1,7 +1,7 @@
-# @plp/express-middleware
+# @goreal-ai/plp-express-middleware
 
 [![PLP Compliant](https://img.shields.io/badge/PLP-Compliant-brightgreen)](https://github.com/gorealai/plp)
-[![npm version](https://img.shields.io/npm/v/@plp/express-middleware.svg)](https://www.npmjs.com/package/@plp/express-middleware)
+[![npm version](https://img.shields.io/npm/v/@goreal-ai/plp-express-middleware.svg)](https://www.npmjs.com/package/@goreal-ai/plp-express-middleware)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 
 Express middleware for building **PLP (Prompt Library Protocol)** compliant servers.
@@ -17,16 +17,16 @@ Express middleware for building **PLP (Prompt Library Protocol)** compliant serv
 ## Installation
 
 ```bash
-npm install @plp/express-middleware express
+npm install @goreal-ai/plp-express-middleware express
 # or
-yarn add @plp/express-middleware express
+yarn add @goreal-ai/plp-express-middleware express
 ```
 
 ## Quick Start
 
 ```typescript
 import express from 'express';
-import { plpMiddleware } from '@plp/express-middleware';
+import { plpMiddleware } from '@goreal-ai/plp-express-middleware';
 
 const app = express();
 app.use(express.json());
@@ -77,7 +77,7 @@ plpMiddleware({
 
 ```typescript
 import express from 'express';
-import { plpMiddleware } from '@plp/express-middleware';
+import { plpMiddleware } from '@goreal-ai/plp-express-middleware';
 
 const app = express();
 app.use(express.json());
@@ -93,7 +93,7 @@ app.listen(3000);
 
 ```typescript
 import express from 'express';
-import { plpMiddleware } from '@plp/express-middleware';
+import { plpMiddleware } from '@goreal-ai/plp-express-middleware';
 
 const app = express();
 app.use(express.json());
@@ -110,7 +110,7 @@ app.listen(3000);
 
 ```typescript
 import express from 'express';
-import { plpMiddleware, Storage, PromptEnvelope } from '@plp/express-middleware';
+import { plpMiddleware, Storage, PromptEnvelope } from '@goreal-ai/plp-express-middleware';
 
 // Implement custom storage (e.g., PostgreSQL, MongoDB)
 class CustomStorage implements Storage {
