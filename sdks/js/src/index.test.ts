@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PLPClient, PLPError } from './index';
+import {
+  PLPClient,
+  PLPError,
+  isMultiModal,
+  normalizeContent,
+  getTextContent,
+  type ContentPart,
+  type PromptEnvelope,
+} from './index';
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -154,6 +162,142 @@ describe('PLPClient', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('multi-modal content', () => {
+    it('should handle multi-modal prompt in get()', async () => {
+      const mockPrompt: PromptEnvelope = {
+        id: 'vision/test',
+        content: [
+          { type: 'text', text: 'Analyze this image:' },
+          { type: 'image_url', image_url: { url: 'https://example.com/img.png', detail: 'high' } },
+        ],
+        meta: { version: '1.0.0' },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPrompt,
+      });
+
+      const result = await client.get('vision/test');
+
+      expect(result.content).toEqual(mockPrompt.content);
+      expect(Array.isArray(result.content)).toBe(true);
+    });
+
+    it('should handle multi-modal prompt in put()', async () => {
+      const input = {
+        content: [
+          { type: 'text' as const, text: 'Describe this:' },
+          { type: 'image_url' as const, image_url: { url: 'https://example.com/img.png' } },
+        ],
+        meta: { version: '1.0.0' },
+      };
+
+      const mockResponse = {
+        id: 'vision/new',
+        ...input,
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => mockResponse,
+      });
+
+      const result = await client.put('vision/new', input);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify(input),
+        })
+      );
+      expect(result.content).toEqual(input.content);
+    });
+  });
+});
+
+describe('Helper Functions', () => {
+  describe('isMultiModal()', () => {
+    it('should return false for string content', () => {
+      expect(isMultiModal('Hello {{name}}')).toBe(false);
+    });
+
+    it('should return false for text-only array content', () => {
+      const content: ContentPart[] = [
+        { type: 'text', text: 'First part' },
+        { type: 'text', text: 'Second part' },
+      ];
+      expect(isMultiModal(content)).toBe(false);
+    });
+
+    it('should return true for content with images', () => {
+      const content: ContentPart[] = [
+        { type: 'text', text: 'Look at this:' },
+        { type: 'image_url', image_url: { url: 'https://example.com/img.png' } },
+      ];
+      expect(isMultiModal(content)).toBe(true);
+    });
+
+    it('should work with PromptEnvelope', () => {
+      const textPrompt: PromptEnvelope = {
+        id: 'test',
+        content: 'Simple text',
+        meta: {},
+      };
+      expect(isMultiModal(textPrompt)).toBe(false);
+
+      const multiModalPrompt: PromptEnvelope = {
+        id: 'test',
+        content: [
+          { type: 'text', text: 'With image' },
+          { type: 'image_url', image_url: { url: 'https://example.com/img.png' } },
+        ],
+        meta: {},
+      };
+      expect(isMultiModal(multiModalPrompt)).toBe(true);
+    });
+  });
+
+  describe('normalizeContent()', () => {
+    it('should wrap string in TextContent array', () => {
+      const result = normalizeContent('Hello {{name}}');
+      expect(result).toEqual([{ type: 'text', text: 'Hello {{name}}' }]);
+    });
+
+    it('should return array content as-is', () => {
+      const content: ContentPart[] = [
+        { type: 'text', text: 'Part 1' },
+        { type: 'image_url', image_url: { url: 'https://example.com/img.png' } },
+      ];
+      const result = normalizeContent(content);
+      expect(result).toBe(content); // Same reference
+    });
+  });
+
+  describe('getTextContent()', () => {
+    it('should return string content as-is', () => {
+      expect(getTextContent('Hello {{name}}')).toBe('Hello {{name}}');
+    });
+
+    it('should extract and join text from ContentPart array', () => {
+      const content: ContentPart[] = [
+        { type: 'text', text: 'First' },
+        { type: 'image_url', image_url: { url: 'https://example.com/img.png' } },
+        { type: 'text', text: 'Second' },
+      ];
+      expect(getTextContent(content)).toBe('First\nSecond');
+    });
+
+    it('should handle array with no text parts', () => {
+      const content: ContentPart[] = [
+        { type: 'image_url', image_url: { url: 'https://example.com/img.png' } },
+      ];
+      expect(getTextContent(content)).toBe('');
     });
   });
 });

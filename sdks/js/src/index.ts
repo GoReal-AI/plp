@@ -3,9 +3,40 @@
  * @license MIT
  */
 
+// =============================================================================
+// Multi-modal Content Types
+// =============================================================================
+
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageUrl {
+  url: string;
+  detail?: 'auto' | 'low' | 'high';
+}
+
+export interface ImageContent {
+  type: 'image_url';
+  image_url: ImageUrl;
+}
+
+export type ContentPart = TextContent | ImageContent;
+
+/**
+ * Prompt content - either a simple string (backwards compatible)
+ * or an array of content parts for multi-modal prompts.
+ */
+export type PromptContent = string | ContentPart[];
+
+// =============================================================================
+// Prompt Envelope Types
+// =============================================================================
+
 export interface PromptEnvelope {
   id: string;
-  content: string;
+  content: PromptContent;
   meta: {
     version?: string;
     author?: string;
@@ -16,9 +47,13 @@ export interface PromptEnvelope {
 }
 
 export interface PromptInput {
-  content: string;
+  content: PromptContent;
   meta?: Record<string, unknown>;
 }
+
+// =============================================================================
+// Client Configuration
+// =============================================================================
 
 export interface PLPClientOptions {
   apiKey?: string;
@@ -36,6 +71,59 @@ export class PLPError extends Error {
     this.name = 'PLPError';
   }
 }
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Check if a prompt has multi-modal content (images)
+ * @param prompt - The prompt envelope or content
+ * @returns true if content contains image parts
+ */
+export function isMultiModal(prompt: PromptEnvelope | PromptContent): boolean {
+  const content = typeof prompt === 'object' && prompt !== null && 'content' in prompt
+    ? (prompt as PromptEnvelope).content
+    : prompt;
+
+  if (typeof content === 'string') {
+    return false;
+  }
+
+  return content.some((part) => part.type === 'image_url');
+}
+
+/**
+ * Normalize content to ContentPart[] format
+ * @param content - String or ContentPart array
+ * @returns ContentPart[] (string is wrapped as single TextContent)
+ */
+export function normalizeContent(content: PromptContent): ContentPart[] {
+  if (typeof content === 'string') {
+    return [{ type: 'text', text: content }];
+  }
+  return content;
+}
+
+/**
+ * Get text-only content from a prompt (useful for token counting)
+ * @param content - String or ContentPart array
+ * @returns Combined text from all text parts
+ */
+export function getTextContent(content: PromptContent): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  return content
+    .filter((part): part is TextContent => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n');
+}
+
+// =============================================================================
+// PLP Client
+// =============================================================================
 
 export class PLPClient {
   private baseUrl: string;
