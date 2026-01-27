@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 import requests
 
-
 # =============================================================================
 # Multi-modal Content Types
 # =============================================================================
@@ -120,7 +119,9 @@ def is_multi_modal(prompt: Union["PromptEnvelope", PromptContent]) -> bool:
     if isinstance(content, str):
         return False
 
-    return any(isinstance(part, ImageContent) or part.type == "image_url" for part in content)
+    return any(
+        isinstance(part, ImageContent) or part.type == "image_url" for part in content
+    )
 
 
 def normalize_content(content: PromptContent) -> List[ContentPart]:
@@ -152,7 +153,9 @@ def get_text_content(content: PromptContent) -> str:
         return content
 
     text_parts = [
-        part.text for part in content if isinstance(part, TextContent) or part.type == "text"
+        part.text
+        for part in content
+        if isinstance(part, TextContent) or part.type == "text"
     ]
     return "\n".join(text_parts)
 
@@ -194,7 +197,9 @@ class PromptEnvelope:
 class PromptInput:
     """Input for creating/updating a prompt."""
 
-    def __init__(self, content: PromptContent, meta: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self, content: PromptContent, meta: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.content = content
         self.meta = meta or {}
 

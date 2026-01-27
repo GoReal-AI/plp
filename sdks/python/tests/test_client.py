@@ -233,7 +233,10 @@ class TestMultiModalContent:
             "id": "vision/new",
             "content": [
                 {"type": "text", "text": "Describe this:"},
-                {"type": "image_url", "image_url": {"url": "https://example.com/img.png"}},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.com/img.png"},
+                },
             ],
             "meta": {"version": "1.0.0"},
         }
@@ -402,7 +405,10 @@ class TestContentTypes:
             "id": "test/prompt",
             "content": [
                 {"type": "text", "text": "Hello"},
-                {"type": "image_url", "image_url": {"url": "https://example.com/img.png"}},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.com/img.png"},
+                },
             ],
             "meta": {"version": "1.0.0"},
         }
@@ -424,7 +430,10 @@ class TestContentTypes:
                 {"type": "text", "text": "Describe:"},
                 {
                     "type": "image_url",
-                    "image_url": {"url": "https://example.com/img.png", "detail": "auto"},
+                    "image_url": {
+                        "url": "https://example.com/img.png",
+                        "detail": "auto",
+                    },
                 },
             ],
             "meta": {"version": "1.0.0"},
