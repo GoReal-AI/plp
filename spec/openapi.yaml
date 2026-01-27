@@ -83,6 +83,7 @@ paths:
                 $ref: '#/components/schemas/PromptEnvelope'
               examples:
                 welcomeEmail:
+                  summary: Simple text prompt
                   value:
                     id: marketing/welcome-email
                     content: "Hello {{name}}, welcome to {{product}}!"
@@ -90,6 +91,23 @@ paths:
                       version: "1.2.0"
                       author: shimon
                       description: Sent on user signup
+                multiModal:
+                  summary: Multi-modal prompt with image
+                  value:
+                    id: vision/product-analyzer
+                    content:
+                      - type: text
+                        text: "Analyze this product image for {{brand}}:"
+                      - type: image_url
+                        image_url:
+                          url: "https://example.com/product.jpg"
+                          detail: high
+                      - type: text
+                        text: "Focus on: {{aspects}}"
+                    meta:
+                      version: "1.0.0"
+                      author: yoad
+                      description: Product image analysis prompt
         '404':
           description: Prompt not found
           content:
@@ -131,17 +149,32 @@ paths:
               $ref: '#/components/schemas/PromptInput'
             examples:
               createPrompt:
+                summary: Simple text prompt
                 value:
                   content: "You are a helpful FAQ bot. Answer: {{question}}"
                   meta:
                     version: "1.0.0"
                     author: yoad
               updatePrompt:
+                summary: Update existing prompt
                 value:
                   content: "Updated prompt content with {{variable}}"
                   meta:
                     version: "2.0.0"
                     description: New iteration
+              createMultiModal:
+                summary: Multi-modal prompt with image
+                value:
+                  content:
+                    - type: text
+                      text: "Describe what you see in this image:"
+                    - type: image_url
+                      image_url:
+                        url: "https://example.com/image.png"
+                        detail: auto
+                  meta:
+                    version: "1.0.0"
+                    author: yoad
       responses:
         '201':
           description: Successfully created new prompt
@@ -268,6 +301,68 @@ components:
       description: Optional API key for authentication (Bearer token)
 
   schemas:
+    # Multi-modal Content Types
+    TextContent:
+      type: object
+      required:
+        - type
+        - text
+      properties:
+        type:
+          type: string
+          enum: [text]
+          description: Content type identifier
+        text:
+          type: string
+          description: The text content (can include variables like {{name}})
+          example: "Hello {{name}}, welcome to {{product}}!"
+
+    ImageUrl:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: Image URL or base64 data URI
+          example: "https://example.com/image.png"
+        detail:
+          type: string
+          enum: [auto, low, high]
+          description: Image detail level for vision models
+          default: auto
+
+    ImageContent:
+      type: object
+      required:
+        - type
+        - image_url
+      properties:
+        type:
+          type: string
+          enum: [image_url]
+          description: Content type identifier
+        image_url:
+          $ref: '#/components/schemas/ImageUrl'
+
+    ContentPart:
+      oneOf:
+        - $ref: '#/components/schemas/TextContent'
+        - $ref: '#/components/schemas/ImageContent'
+      description: A single content part (text or image)
+
+    PromptContent:
+      oneOf:
+        - type: string
+          description: Simple string content (backwards compatible)
+        - type: array
+          items:
+            $ref: '#/components/schemas/ContentPart'
+          description: Multi-modal content array
+      description: |
+        Prompt content - either a simple string (backwards compatible)
+        or an array of content parts for multi-modal prompts.
+
     PromptEnvelope:
       type: object
       required:
@@ -281,9 +376,7 @@ components:
           example: marketing/welcome-email
           pattern: '^[a-zA-Z0-9/_-]+$'
         content:
-          type: string
-          description: The raw prompt template (can include variables like {{name}})
-          example: "Hello {{name}}, welcome to {{product}}!"
+          $ref: '#/components/schemas/PromptContent'
         meta:
           type: object
           description: Metadata container (must exist, can be empty)
@@ -316,9 +409,7 @@ components:
         - meta
       properties:
         content:
-          type: string
-          description: The raw prompt template
-          example: "You are a helpful assistant. Task: {{task}}"
+          $ref: '#/components/schemas/PromptContent'
         meta:
           type: object
           description: Metadata container (can be empty object {})

@@ -5,6 +5,63 @@
   "description": "JSON Schema for validating PLP (Prompt Library Protocol) prompt objects",
   "type": "object",
   "required": ["id", "content", "meta"],
+  "definitions": {
+    "TextContent": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["text"],
+          "description": "Content type identifier"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content (can include variables like {{name}})"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImageUrl": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Image URL or base64 data URI"
+        },
+        "detail": {
+          "type": "string",
+          "enum": ["auto", "low", "high"],
+          "description": "Image detail level for vision models",
+          "default": "auto"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImageContent": {
+      "type": "object",
+      "required": ["type", "image_url"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["image_url"],
+          "description": "Content type identifier"
+        },
+        "image_url": {
+          "$ref": "#/definitions/ImageUrl"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContentPart": {
+      "oneOf": [
+        { "$ref": "#/definitions/TextContent" },
+        { "$ref": "#/definitions/ImageContent" }
+      ],
+      "description": "A single content part (text or image)"
+    }
+  },
   "properties": {
     "id": {
       "type": "string",
@@ -22,12 +79,21 @@
       ]
     },
     "content": {
-      "type": "string",
-      "description": "The raw prompt template (can include variables like {{name}})",
-      "examples": [
-        "Hello {{name}}, welcome to {{product}}!",
-        "You are a helpful assistant. Task: {{task}}"
-      ]
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Simple string content (backwards compatible)"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContentPart"
+          },
+          "minItems": 1,
+          "description": "Multi-modal content array"
+        }
+      ],
+      "description": "Prompt content - either a simple string or an array of content parts"
     },
     "meta": {
       "type": "object",
@@ -139,6 +205,31 @@
       "id": "simple/prompt",
       "content": "Just a simple prompt",
       "meta": {}
+    },
+    {
+      "id": "vision/product-analyzer",
+      "content": [
+        {
+          "type": "text",
+          "text": "Analyze this product image for {{brand}}:"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://example.com/product.jpg",
+            "detail": "high"
+          }
+        },
+        {
+          "type": "text",
+          "text": "Focus on: {{aspects}}"
+        }
+      ],
+      "meta": {
+        "version": "1.0.0",
+        "author": "yoad",
+        "description": "Multi-modal product analysis prompt"
+      }
     }
   ]
 }
