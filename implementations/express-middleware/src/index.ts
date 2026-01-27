@@ -7,9 +7,35 @@ import { Router, Request, Response, NextFunction } from 'express';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+// =============================================================================
+// Multi-modal Content Types
+// =============================================================================
+
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageUrl {
+  url: string;
+  detail?: 'auto' | 'low' | 'high';
+}
+
+export interface ImageContent {
+  type: 'image_url';
+  image_url: ImageUrl;
+}
+
+export type ContentPart = TextContent | ImageContent;
+export type PromptContent = string | ContentPart[];
+
+// =============================================================================
+// Prompt Types
+// =============================================================================
+
 export interface PromptEnvelope {
   id: string;
-  content: string;
+  content: PromptContent;
   meta: Record<string, unknown>;
 }
 
@@ -171,6 +197,40 @@ function authMiddleware(
 }
 
 /**
+ * Validate content part structure
+ */
+function isValidContentPart(part: unknown): part is ContentPart {
+  if (!part || typeof part !== 'object') return false;
+  const obj = part as Record<string, unknown>;
+
+  if (obj.type === 'text') {
+    return typeof obj.text === 'string';
+  }
+
+  if (obj.type === 'image_url') {
+    const imageUrl = obj.image_url as Record<string, unknown> | undefined;
+    return imageUrl !== null && typeof imageUrl === 'object' && typeof imageUrl.url === 'string';
+  }
+
+  return false;
+}
+
+/**
+ * Validate content: string or array of ContentParts
+ */
+function isValidContent(content: unknown): content is PromptContent {
+  if (typeof content === 'string') {
+    return true;
+  }
+
+  if (Array.isArray(content)) {
+    return content.length > 0 && content.every(isValidContentPart);
+  }
+
+  return false;
+}
+
+/**
  * Validate prompt ID
  * - Must contain only alphanumeric, /, _, -
  * - Cannot start or end with /
@@ -285,7 +345,8 @@ export function plpMiddleware(options: PLPMiddlewareOptions): Router {
 
       const { content, meta } = req.body as { content?: unknown; meta?: unknown };
 
-      if (typeof content !== 'string') {
+      // Validate content: must be string or array of ContentParts
+      if (!isValidContent(content)) {
         return res
           .status(400)
           .json({ error: 'Invalid request - content field is required' });
@@ -337,4 +398,4 @@ export function plpMiddleware(options: PLPMiddlewareOptions): Router {
 }
 
 // Export types and utilities
-export { FileStorage, validatePromptId, parsePromptPath, SEMVER_PATTERN };
+export { FileStorage, validatePromptId, parsePromptPath, SEMVER_PATTERN, isValidContent, isValidContentPart };

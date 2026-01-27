@@ -105,6 +105,40 @@ function buildHeaders(ctx: TestContext, contentType = false): Record<string, str
 }
 
 /**
+ * Validate content part structure
+ */
+function isValidContentPart(part: unknown): boolean {
+  if (!part || typeof part !== 'object') return false;
+  const obj = part as Record<string, unknown>;
+
+  if (obj.type === 'text') {
+    return typeof obj.text === 'string';
+  }
+
+  if (obj.type === 'image_url') {
+    const imageUrl = obj.image_url as Record<string, unknown> | undefined;
+    return imageUrl !== null && typeof imageUrl === 'object' && typeof imageUrl.url === 'string';
+  }
+
+  return false;
+}
+
+/**
+ * Validate content: string or array of ContentParts
+ */
+function isValidContent(content: unknown): boolean {
+  if (typeof content === 'string') {
+    return true;
+  }
+
+  if (Array.isArray(content)) {
+    return content.length > 0 && content.every(isValidContentPart);
+  }
+
+  return false;
+}
+
+/**
  * Validate envelope structure
  */
 function isValidEnvelope(data: unknown): data is PromptEnvelope {
@@ -112,7 +146,7 @@ function isValidEnvelope(data: unknown): data is PromptEnvelope {
   const obj = data as Record<string, unknown>;
   return (
     typeof obj.id === 'string' &&
-    typeof obj.content === 'string' &&
+    isValidContent(obj.content) &&
     obj.meta !== null &&
     typeof obj.meta === 'object' &&
     !Array.isArray(obj.meta)
@@ -530,8 +564,8 @@ const envelopeTests: TestDefinition[] = [
       if (typeof envelope.id !== 'string') {
         throw new Error('Envelope field "id" must be a string');
       }
-      if (typeof envelope.content !== 'string') {
-        throw new Error('Envelope field "content" must be a string');
+      if (!isValidContent(envelope.content)) {
+        throw new Error('Envelope field "content" must be a string or array of ContentParts');
       }
       if (typeof envelope.meta !== 'object' || envelope.meta === null || Array.isArray(envelope.meta)) {
         throw new Error('Envelope field "meta" must be an object');

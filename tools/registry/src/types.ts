@@ -48,9 +48,28 @@ export interface TestContext {
   debug?: boolean;
 }
 
+// Multi-modal content types
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageUrl {
+  url: string;
+  detail?: 'auto' | 'low' | 'high';
+}
+
+export interface ImageContent {
+  type: 'image_url';
+  image_url: ImageUrl;
+}
+
+export type ContentPart = TextContent | ImageContent;
+export type PromptContent = string | ContentPart[];
+
 export interface PromptEnvelope {
   id: string;
-  content: string;
+  content: PromptContent;
   meta: Record<string, unknown>;
 }
 
