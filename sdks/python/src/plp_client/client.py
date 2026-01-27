@@ -119,9 +119,7 @@ def is_multi_modal(prompt: Union["PromptEnvelope", PromptContent]) -> bool:
     if isinstance(content, str):
         return False
 
-    return any(
-        isinstance(part, ImageContent) or part.type == "image_url" for part in content
-    )
+    return any(isinstance(part, ImageContent) for part in content)
 
 
 def normalize_content(content: PromptContent) -> List[ContentPart]:
@@ -152,11 +150,7 @@ def get_text_content(content: PromptContent) -> str:
     if isinstance(content, str):
         return content
 
-    text_parts = [
-        part.text
-        for part in content
-        if isinstance(part, TextContent) or part.type == "text"
-    ]
+    text_parts = [part.text for part in content if isinstance(part, TextContent)]
     return "\n".join(text_parts)
 
 
