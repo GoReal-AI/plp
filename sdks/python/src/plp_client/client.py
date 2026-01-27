@@ -2,14 +2,167 @@
 PLP Client Implementation
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass
 import requests
+
+# =============================================================================
+# Multi-modal Content Types
+# =============================================================================
+
+
+@dataclass
+class TextContent:
+    """Text content part."""
+
+    type: str  # Always "text"
+    text: str
+
+    def __init__(self, text: str) -> None:
+        self.type = "text"
+        self.text = text
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": self.type, "text": self.text}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TextContent":
+        return cls(text=data["text"])
+
+
+@dataclass
+class ImageUrl:
+    """Image URL with optional detail level."""
+
+    url: str
+    detail: Optional[str] = None  # "auto" | "low" | "high"
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {"url": self.url}
+        if self.detail:
+            result["detail"] = self.detail
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ImageUrl":
+        return cls(url=data["url"], detail=data.get("detail"))
+
+
+@dataclass
+class ImageContent:
+    """Image content part."""
+
+    type: str  # Always "image_url"
+    image_url: ImageUrl
+
+    def __init__(self, image_url: ImageUrl) -> None:
+        self.type = "image_url"
+        self.image_url = image_url
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": self.type, "image_url": self.image_url.to_dict()}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ImageContent":
+        return cls(image_url=ImageUrl.from_dict(data["image_url"]))
+
+
+# Type aliases
+ContentPart = Union[TextContent, ImageContent]
+PromptContent = Union[str, List[ContentPart]]
+
+
+def content_part_from_dict(data: Dict[str, Any]) -> ContentPart:
+    """Create a ContentPart from a dictionary."""
+    if data["type"] == "text":
+        return TextContent.from_dict(data)
+    elif data["type"] == "image_url":
+        return ImageContent.from_dict(data)
+    else:
+        raise ValueError(f"Unknown content part type: {data['type']}")
+
+
+def content_from_dict(data: Union[str, List[Dict[str, Any]]]) -> PromptContent:
+    """Create PromptContent from a dictionary or string."""
+    if isinstance(data, str):
+        return data
+    return [content_part_from_dict(part) for part in data]
+
+
+def content_to_dict(content: PromptContent) -> Union[str, List[Dict[str, Any]]]:
+    """Convert PromptContent to dictionary or string."""
+    if isinstance(content, str):
+        return content
+    return [part.to_dict() for part in content]
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def is_multi_modal(prompt: Union["PromptEnvelope", PromptContent]) -> bool:
+    """
+    Check if a prompt has multi-modal content (images).
+
+    Args:
+        prompt: The prompt envelope or content
+
+    Returns:
+        True if content contains image parts
+    """
+    if isinstance(prompt, PromptEnvelope):
+        content = prompt.content
+    else:
+        content = prompt
+
+    if isinstance(content, str):
+        return False
+
+    return any(isinstance(part, ImageContent) for part in content)
+
+
+def normalize_content(content: PromptContent) -> List[ContentPart]:
+    """
+    Normalize content to ContentPart[] format.
+
+    Args:
+        content: String or ContentPart array
+
+    Returns:
+        ContentPart[] (string is wrapped as single TextContent)
+    """
+    if isinstance(content, str):
+        return [TextContent(text=content)]
+    return content
+
+
+def get_text_content(content: PromptContent) -> str:
+    """
+    Get text-only content from a prompt (useful for token counting).
+
+    Args:
+        content: String or ContentPart array
+
+    Returns:
+        Combined text from all text parts
+    """
+    if isinstance(content, str):
+        return content
+
+    text_parts = [part.text for part in content if isinstance(part, TextContent)]
+    return "\n".join(text_parts)
+
+
+# =============================================================================
+# Prompt Types
+# =============================================================================
 
 
 class PromptEnvelope:
     """Represents a PLP prompt envelope."""
 
-    def __init__(self, id: str, content: str, meta: Dict[str, Any]) -> None:
+    def __init__(self, id: str, content: PromptContent, meta: Dict[str, Any]) -> None:
         self.id = id
         self.content = content
         self.meta = meta
@@ -19,7 +172,7 @@ class PromptEnvelope:
         """Create a PromptEnvelope from a dictionary."""
         return cls(
             id=data["id"],
-            content=data["content"],
+            content=content_from_dict(data["content"]),
             meta=data.get("meta", {}),
         )
 
@@ -27,7 +180,7 @@ class PromptEnvelope:
         """Convert to dictionary."""
         return {
             "id": self.id,
-            "content": self.content,
+            "content": content_to_dict(self.content),
             "meta": self.meta,
         }
 
@@ -38,14 +191,16 @@ class PromptEnvelope:
 class PromptInput:
     """Input for creating/updating a prompt."""
 
-    def __init__(self, content: str, meta: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self, content: PromptContent, meta: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.content = content
         self.meta = meta or {}
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            "content": self.content,
+            "content": content_to_dict(self.content),
             "meta": self.meta,
         }
 
@@ -62,6 +217,11 @@ class PLPError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.response = response
+
+
+# =============================================================================
+# PLP Client
+# =============================================================================
 
 
 class PLPClient:
