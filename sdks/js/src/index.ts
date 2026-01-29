@@ -52,6 +52,115 @@ export interface PromptInput {
 }
 
 // =============================================================================
+// Context Store Types
+// =============================================================================
+
+export interface ContextStoreAsset {
+  id: number;
+  assetId: string;
+  mimeType: string;
+  fileSize: number;
+  plpReference: string;
+  projectId: number | null;
+  createdAt: string;
+}
+
+export interface AssetContent {
+  assetId: string;
+  mimeType: string;
+  dataUrl: string;
+}
+
+export interface StorageUsage {
+  bytesUsed: number;
+  assetCount: number;
+}
+
+// =============================================================================
+// Prompt Context Types
+// =============================================================================
+
+export interface ContextMapping {
+  id: number;
+  contextName: string;
+  assetId: string;
+  mimeType: string;
+  plpReference: string;
+  createdAt: string;
+}
+
+export interface AddContextMappingInput {
+  contextName: string;
+  assetId: string;
+}
+
+export interface ResolveContextInput {
+  contextNames?: string[] | null;
+}
+
+export interface ResolvedContext {
+  contextName: string;
+  assetId: string;
+  mimeType: string;
+  dataUrl: string | null;
+}
+
+// =============================================================================
+// Discovery Types
+// =============================================================================
+
+export interface Discovery {
+  plp_version: string;
+  server?: string;
+  capabilities: {
+    versioning: boolean;
+    list: boolean;
+    search: boolean;
+    contextStore?: boolean;
+  };
+}
+
+// =============================================================================
+// Prompt List Types
+// =============================================================================
+
+export interface PromptSummary {
+  id: string;
+  name: string;
+  description?: string;
+  visibility?: 'public' | 'private';
+  createdAt?: string;
+}
+
+export interface PromptListResponse {
+  content: PromptSummary[];
+  page: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface ListPromptsOptions {
+  page?: number;
+  size?: number;
+  projectId?: number;
+  visibility?: 'public' | 'private';
+}
+
+// =============================================================================
+// Publish Types
+// =============================================================================
+
+export interface PublishRequest {
+  versionNo: number;
+}
+
+export interface PublishResponse {
+  promptId: string;
+  versionId?: number;
+  versionNo: number;
+}
+
+// =============================================================================
 // Client Configuration
 // =============================================================================
 
@@ -249,6 +358,272 @@ export class PLPClient {
    */
   async save(promptId: string, input: PromptInput): Promise<PromptEnvelope> {
     return this.put(promptId, input);
+  }
+
+  // ===========================================================================
+  // Discovery Methods
+  // ===========================================================================
+
+  /**
+   * Get server discovery information and capabilities
+   * @returns Discovery information including PLP version and capabilities
+   */
+  async getDiscovery(): Promise<Discovery> {
+    return this.request<Discovery>('GET', '/.well-known/plp');
+  }
+
+  // ===========================================================================
+  // Prompt List & Publish Methods
+  // ===========================================================================
+
+  /**
+   * List prompts with optional filtering and pagination
+   * @param options - Optional filtering and pagination options
+   * @returns Paginated list of prompt summaries
+   */
+  async listPrompts(options?: ListPromptsOptions): Promise<PromptListResponse> {
+    const params = new URLSearchParams();
+    if (options?.page != null) params.set('page', String(options.page));
+    if (options?.size != null) params.set('size', String(options.size));
+    if (options?.projectId != null) params.set('projectId', String(options.projectId));
+    if (options?.visibility) params.set('visibility', options.visibility);
+
+    const queryString = params.toString();
+    const path = queryString ? `/v1/prompts?${queryString}` : '/v1/prompts';
+
+    return this.request<PromptListResponse>('GET', path);
+  }
+
+  /**
+   * Publish a specific version of a prompt
+   * @param promptId - The prompt identifier
+   * @param versionNo - The version number to publish
+   * @returns Publish response with promptId and versionNo
+   */
+  async publish(promptId: string, versionNo: number): Promise<PublishResponse> {
+    const body: PublishRequest = { versionNo };
+    return this.requestJson<PublishResponse>('POST', `/v1/prompts/${promptId}/publish`, body);
+  }
+
+  // ===========================================================================
+  // Context Store Methods
+  // ===========================================================================
+
+  /**
+   * List all assets in the user's Context Store
+   * @param projectId - Optional project ID to filter by
+   * @returns Array of context store assets
+   */
+  async listContextStore(projectId?: number): Promise<ContextStoreAsset[]> {
+    const params = projectId != null ? `?projectId=${projectId}` : '';
+    return this.request<ContextStoreAsset[]>('GET', `/v1/context-store${params}`);
+  }
+
+  /**
+   * Upload an asset to the Context Store (multipart form)
+   * @param assetId - Unique asset identifier (1-64 alphanumeric, hyphens, underscores)
+   * @param file - The file to upload (Blob or File)
+   * @param projectId - Optional project ID to scope the asset
+   * @returns The created context store asset
+   */
+  async uploadContextStoreAsset(
+    assetId: string,
+    file: Blob,
+    projectId?: number
+  ): Promise<ContextStoreAsset> {
+    const url = `${this.baseUrl}/v1/context-store`;
+    const headers: Record<string, string> = { ...this.headers };
+
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const formData = new FormData();
+    formData.append('assetId', assetId);
+    formData.append('file', file);
+    if (projectId != null) {
+      formData.append('projectId', String(projectId));
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers, // Note: Don't set Content-Type for FormData - browser handles it
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        const errorData = data as { error?: string };
+        throw new PLPError(
+          errorData.error || `HTTP ${response.status}`,
+          response.status,
+          data
+        );
+      }
+
+      return data as ContextStoreAsset;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof PLPError) {
+        throw error;
+      }
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new PLPError(`Request timeout after ${this.timeout}ms`);
+        }
+        throw new PLPError(`Network error: ${error.message}`);
+      }
+
+      throw new PLPError('Unknown error occurred');
+    }
+  }
+
+  /**
+   * Get asset content as base64 data URL
+   * @param assetId - The asset identifier
+   * @returns Asset content with data URL
+   */
+  async getContextStoreAsset(assetId: string): Promise<AssetContent> {
+    return this.request<AssetContent>('GET', `/v1/context-store/${assetId}`);
+  }
+
+  /**
+   * Delete an asset from Context Store
+   * @param assetId - The asset identifier
+   */
+  async deleteContextStoreAsset(assetId: string): Promise<void> {
+    return this.request<void>('DELETE', `/v1/context-store/${assetId}`);
+  }
+
+  /**
+   * Get storage usage statistics
+   * @returns Storage usage info
+   */
+  async getContextStoreUsage(): Promise<StorageUsage> {
+    return this.request<StorageUsage>('GET', '/v1/context-store/usage');
+  }
+
+  // ===========================================================================
+  // Prompt Context Methods
+  // ===========================================================================
+
+  /**
+   * List context mappings for a prompt
+   * @param promptId - The prompt identifier
+   * @returns Array of context mappings
+   */
+  async listPromptContext(promptId: string): Promise<ContextMapping[]> {
+    return this.request<ContextMapping[]>('GET', `/v1/prompts/${promptId}/context`);
+  }
+
+  /**
+   * Add or update a context mapping for a prompt
+   * @param promptId - The prompt identifier
+   * @param input - The context mapping input
+   * @returns The created/updated context mapping
+   */
+  async addPromptContext(promptId: string, input: AddContextMappingInput): Promise<ContextMapping> {
+    return this.requestJson<ContextMapping>('POST', `/v1/prompts/${promptId}/context`, input);
+  }
+
+  /**
+   * Remove a context mapping from a prompt
+   * @param promptId - The prompt identifier
+   * @param contextName - The context name to remove
+   */
+  async removePromptContext(promptId: string, contextName: string): Promise<void> {
+    return this.request<void>('DELETE', `/v1/prompts/${promptId}/context/${contextName}`);
+  }
+
+  /**
+   * Resolve context mappings to actual content (base64 data URLs)
+   * @param promptId - The prompt identifier
+   * @param contextNames - Optional specific context names to resolve (null = all)
+   * @returns Map of context name to resolved content
+   */
+  async resolvePromptContext(
+    promptId: string,
+    contextNames?: string[] | null
+  ): Promise<Record<string, ResolvedContext>> {
+    const input: ResolveContextInput = contextNames ? { contextNames } : {};
+    return this.requestJson<Record<string, ResolvedContext>>(
+      'POST',
+      `/v1/prompts/${promptId}/context/_resolve`,
+      input
+    );
+  }
+
+  // Helper for JSON body requests (context uses different body type than prompts)
+  private async requestJson<T>(
+    method: string,
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...this.headers,
+    };
+
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        const errorData = data as { error?: string };
+        throw new PLPError(
+          errorData.error || `HTTP ${response.status}`,
+          response.status,
+          data
+        );
+      }
+
+      return data as T;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof PLPError) {
+        throw error;
+      }
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new PLPError(`Request timeout after ${this.timeout}ms`);
+        }
+        throw new PLPError(`Network error: ${error.message}`);
+      }
+
+      throw new PLPError('Unknown error occurred');
+    }
   }
 }
 

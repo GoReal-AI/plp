@@ -205,6 +205,120 @@ class PromptInput:
         }
 
 
+# =============================================================================
+# Context Store Types
+# =============================================================================
+
+
+@dataclass
+class ContextStoreAsset:
+    """Represents a Context Store asset."""
+
+    id: int
+    asset_id: str
+    mime_type: str
+    file_size: int
+    plp_reference: str
+    project_id: Optional[int]
+    created_at: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ContextStoreAsset":
+        """Create from dictionary."""
+        return cls(
+            id=data["id"],
+            asset_id=data["assetId"],
+            mime_type=data["mimeType"],
+            file_size=data["fileSize"],
+            plp_reference=data["plpReference"],
+            project_id=data.get("projectId"),
+            created_at=data["createdAt"],
+        )
+
+
+@dataclass
+class AssetContent:
+    """Asset content with base64 data URL."""
+
+    asset_id: str
+    mime_type: str
+    data_url: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AssetContent":
+        """Create from dictionary."""
+        return cls(
+            asset_id=data["assetId"],
+            mime_type=data["mimeType"],
+            data_url=data["dataUrl"],
+        )
+
+
+@dataclass
+class StorageUsage:
+    """Storage usage statistics."""
+
+    bytes_used: int
+    asset_count: int
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "StorageUsage":
+        """Create from dictionary."""
+        return cls(
+            bytes_used=data["bytesUsed"],
+            asset_count=data["assetCount"],
+        )
+
+
+# =============================================================================
+# Prompt Context Types
+# =============================================================================
+
+
+@dataclass
+class ContextMapping:
+    """Represents a prompt context mapping."""
+
+    id: int
+    context_name: str
+    asset_id: str
+    mime_type: str
+    plp_reference: str
+    created_at: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ContextMapping":
+        """Create from dictionary."""
+        return cls(
+            id=data["id"],
+            context_name=data["contextName"],
+            asset_id=data["assetId"],
+            mime_type=data["mimeType"],
+            plp_reference=data["plpReference"],
+            created_at=data["createdAt"],
+        )
+
+
+@dataclass
+class ResolvedContext:
+    """Resolved context content."""
+
+    context_name: str
+    asset_id: str
+    mime_type: str
+    data_url: Optional[str]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ResolvedContext":
+        """Create from dictionary."""
+        return cls(
+            context_name=data["contextName"],
+            asset_id=data["assetId"],
+            mime_type=data["mimeType"],
+            data_url=data.get("dataUrl"),
+        )
+
+
 class PLPError(Exception):
     """Exception raised for PLP-related errors."""
 
@@ -360,6 +474,128 @@ class PLPClient:
     def save(self, prompt_id: str, input: PromptInput) -> PromptEnvelope:
         """Alias for put() - more intuitive naming."""
         return self.put(prompt_id, input)
+
+    # =========================================================================
+    # Context Store Methods
+    # =========================================================================
+
+    def list_context_store(
+        self, project_id: Optional[int] = None
+    ) -> List[ContextStoreAsset]:
+        """
+        List all assets in the user's Context Store.
+
+        Args:
+            project_id: Optional project ID to filter by
+
+        Returns:
+            List of context store assets
+        """
+        params = f"?projectId={project_id}" if project_id is not None else ""
+        data = self._request("GET", f"/v1/context-store{params}")
+        return [ContextStoreAsset.from_dict(item) for item in data]
+
+    def get_context_store_asset(self, asset_id: str) -> AssetContent:
+        """
+        Get asset content as base64 data URL.
+
+        Args:
+            asset_id: The asset identifier
+
+        Returns:
+            Asset content with data URL
+        """
+        data = self._request("GET", f"/v1/context-store/{asset_id}")
+        return AssetContent.from_dict(data)
+
+    def delete_context_store_asset(self, asset_id: str) -> None:
+        """
+        Delete an asset from Context Store.
+
+        Args:
+            asset_id: The asset identifier
+        """
+        self._request("DELETE", f"/v1/context-store/{asset_id}")
+
+    def get_context_store_usage(self) -> StorageUsage:
+        """
+        Get storage usage statistics.
+
+        Returns:
+            Storage usage info
+        """
+        data = self._request("GET", "/v1/context-store/usage")
+        return StorageUsage.from_dict(data)
+
+    # =========================================================================
+    # Prompt Context Methods
+    # =========================================================================
+
+    def list_prompt_context(self, prompt_id: str) -> List[ContextMapping]:
+        """
+        List context mappings for a prompt.
+
+        Args:
+            prompt_id: The prompt identifier
+
+        Returns:
+            List of context mappings
+        """
+        data = self._request("GET", f"/v1/prompts/{prompt_id}/context")
+        return [ContextMapping.from_dict(item) for item in data]
+
+    def add_prompt_context(
+        self, prompt_id: str, context_name: str, asset_id: str
+    ) -> ContextMapping:
+        """
+        Add or update a context mapping for a prompt.
+
+        Args:
+            prompt_id: The prompt identifier
+            context_name: The context name to use in #context() syntax
+            asset_id: The Context Store asset ID to link
+
+        Returns:
+            The created/updated context mapping
+        """
+        data = self._request(
+            "POST",
+            f"/v1/prompts/{prompt_id}/context",
+            json={"contextName": context_name, "assetId": asset_id},
+        )
+        return ContextMapping.from_dict(data)
+
+    def remove_prompt_context(self, prompt_id: str, context_name: str) -> None:
+        """
+        Remove a context mapping from a prompt.
+
+        Args:
+            prompt_id: The prompt identifier
+            context_name: The context name to remove
+        """
+        self._request("DELETE", f"/v1/prompts/{prompt_id}/context/{context_name}")
+
+    def resolve_prompt_context(
+        self, prompt_id: str, context_names: Optional[List[str]] = None
+    ) -> Dict[str, ResolvedContext]:
+        """
+        Resolve context mappings to actual content (base64 data URLs).
+
+        Args:
+            prompt_id: The prompt identifier
+            context_names: Optional specific context names to resolve (None = all)
+
+        Returns:
+            Dict mapping context name to resolved content
+        """
+        body: Dict[str, Any] = {}
+        if context_names:
+            body["contextNames"] = context_names
+
+        data = self._request(
+            "POST", f"/v1/prompts/{prompt_id}/context/_resolve", json=body
+        )
+        return {name: ResolvedContext.from_dict(value) for name, value in data.items()}
 
     def __enter__(self) -> "PLPClient":
         """Context manager entry."""

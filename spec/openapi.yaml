@@ -26,6 +26,10 @@ tags:
     description: Server discovery and capabilities
   - name: prompts
     description: Prompt CRUD operations
+  - name: context-store
+    description: Context Store for user's private assets (images, text files)
+  - name: prompt-context
+    description: Prompt context mappings
 
 security:
   - bearerAuth: []
@@ -54,8 +58,68 @@ paths:
                 server: "my-plp-server"
                 capabilities:
                   versioning: true
-                  list: false
+                  list: true
                   search: false
+                  contextStore: true
+
+  /prompts:
+    get:
+      tags:
+        - prompts
+      summary: List prompts
+      description: |
+        Returns a paginated list of prompts accessible to the authenticated user.
+        Supports filtering by project and visibility.
+      operationId: listPrompts
+      parameters:
+        - name: page
+          in: query
+          description: Page number (0-indexed)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: projectId
+          in: query
+          description: Filter by project ID
+          schema:
+            type: integer
+        - name: visibility
+          in: query
+          description: Filter by visibility
+          schema:
+            type: string
+            enum: [public, private]
+      responses:
+        '200':
+          description: Paginated list of prompts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptListResponse'
+              example:
+                content:
+                  - id: "marketing/welcome-email"
+                    name: "Welcome Email"
+                    description: "Sent on user signup"
+                    visibility: "public"
+                    createdAt: "2024-01-15T10:30:00Z"
+                page: 0
+                totalElements: 42
+                totalPages: 3
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /prompts/{prompt_id}:
     get:
@@ -243,6 +307,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /prompts/{prompt_id}/publish:
+    post:
+      tags:
+        - prompts
+      summary: Publish a prompt version
+      description: |
+        Publishes a specific version of a prompt, making it the active public version.
+        Only the prompt owner can publish.
+      operationId: publishPrompt
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: Unique prompt identifier
+          schema:
+            type: string
+            example: marketing/welcome-email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+            example:
+              versionNo: 3
+      responses:
+        '200':
+          description: Successfully published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+              example:
+                promptId: "marketing/welcome-email"
+                versionId: 42
+                versionNo: 3
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Version not found
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not authorized to publish this prompt
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /prompts/{prompt_id}/{version}:
     get:
       tags:
@@ -288,6 +417,370 @@ paths:
                 error: Version 1.0.0 not found
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Context Store Endpoints
+  /context-store:
+    get:
+      tags:
+        - context-store
+      summary: List user's Context Store assets
+      description: |
+        Returns all assets in the authenticated user's Context Store.
+        Optionally filter by project ID.
+      operationId: listContextStoreAssets
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          description: Filter assets by project ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of context store assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContextStoreAsset'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - context-store
+      summary: Upload a new asset to Context Store
+      description: |
+        Upload an image or text file to the authenticated user's Context Store.
+        Supported types: images (png, jpg, gif, webp) and text (txt, md, json, yaml, xml).
+      operationId: uploadContextStoreAsset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - assetId
+                - file
+              properties:
+                assetId:
+                  type: string
+                  description: Unique asset identifier (1-64 alphanumeric, hyphens, underscores)
+                  pattern: '^[a-zA-Z0-9_-]{1,64}$'
+                  example: logo-v2
+                projectId:
+                  type: integer
+                  description: Optional project to scope the asset
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+      responses:
+        '201':
+          description: Asset uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextStoreAsset'
+        '400':
+          description: Invalid request (bad asset ID, unsupported file type, or file too large)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Asset with this ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /context-store/{asset_id}:
+    get:
+      tags:
+        - context-store
+      summary: Get asset content
+      description: |
+        Retrieves the content of an asset as a base64 data URL.
+        For images: data:image/png;base64,...
+        For text: data:text/plain;base64,...
+      operationId: getContextStoreAsset
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          description: The asset identifier
+          schema:
+            type: string
+            example: logo-v2
+      responses:
+        '200':
+          description: Asset content as data URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetContent'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - context-store
+      summary: Delete an asset
+      description: |
+        Permanently removes an asset from the Context Store.
+        Will fail if the asset is in use by any prompt context mappings.
+      operationId: deleteContextStoreAsset
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          description: The asset identifier
+          schema:
+            type: string
+            example: logo-v2
+      responses:
+        '204':
+          description: Asset deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Asset is in use by prompt context mappings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /context-store/usage:
+    get:
+      tags:
+        - context-store
+      summary: Get storage usage
+      description: Returns storage usage statistics for the authenticated user.
+      operationId: getContextStoreUsage
+      responses:
+        '200':
+          description: Storage usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageUsage'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Prompt Context Endpoints
+  /prompts/{prompt_id}/context:
+    get:
+      tags:
+        - prompt-context
+      summary: List context mappings for a prompt
+      description: |
+        Returns all context mappings configured for a prompt.
+        These map context names (used in #context() syntax) to Context Store assets.
+      operationId: listPromptContextMappings
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of context mappings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContextMapping'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - prompt-context
+      summary: Add or update a context mapping
+      description: |
+        Maps a context name to a Context Store asset for this prompt.
+        If the context name already exists, updates it to point to the new asset.
+      operationId: addPromptContextMapping
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddContextMappingInput'
+      responses:
+        '201':
+          description: Context mapping created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextMapping'
+        '200':
+          description: Context mapping updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextMapping'
+        '400':
+          description: Invalid context name format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt or asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /prompts/{prompt_id}/context/{context_name}:
+    delete:
+      tags:
+        - prompt-context
+      summary: Remove a context mapping
+      description: Removes a context mapping from a prompt.
+      operationId: removePromptContextMapping
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+        - name: context_name
+          in: path
+          required: true
+          description: The context name to remove
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Context mapping removed
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt or context mapping not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /prompts/{prompt_id}/context/_resolve:
+    post:
+      tags:
+        - prompt-context
+      summary: Resolve context mappings to content
+      description: |
+        Resolves context mappings to actual content (base64 data URLs).
+        This is called during template rendering to get the content for #context() references.
+      operationId: resolvePromptContext
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveContextInput'
+      responses:
+        '200':
+          description: Resolved context content
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/ResolvedContext'
+              example:
+                hero-image:
+                  contextName: hero-image
+                  assetId: logo-v2
+                  mimeType: image/png
+                  dataUrl: "data:image/png;base64,iVBORw0KGgo..."
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt not found
           content:
             application/json:
               schema:
@@ -461,4 +954,265 @@ components:
               type: boolean
               description: Whether search is supported
               example: false
+            contextStore:
+              type: boolean
+              description: Whether Context Store is supported
+              example: true
           additionalProperties: true
+
+    # Context Store Schemas
+    ContextStoreAsset:
+      type: object
+      required:
+        - id
+        - assetId
+        - mimeType
+        - fileSize
+        - plpReference
+        - createdAt
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+          example: 42
+        assetId:
+          type: string
+          description: Unique asset identifier
+          example: logo-v2
+        mimeType:
+          type: string
+          description: MIME type of the asset
+          example: image/png
+        fileSize:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 102400
+        plpReference:
+          type: string
+          description: PLP reference URL (plp://asset-id)
+          example: "plp://logo-v2"
+        projectId:
+          type: integer
+          description: Project ID if scoped to a project
+          nullable: true
+          example: 5
+        createdAt:
+          type: string
+          format: date-time
+          description: When the asset was created
+          example: "2024-01-15T10:30:00Z"
+
+    AssetContent:
+      type: object
+      required:
+        - assetId
+        - mimeType
+        - dataUrl
+      properties:
+        assetId:
+          type: string
+          description: Asset identifier
+          example: logo-v2
+        mimeType:
+          type: string
+          description: MIME type of the content
+          example: image/png
+        dataUrl:
+          type: string
+          description: Base64 data URL containing the asset content
+          example: "data:image/png;base64,iVBORw0KGgo..."
+
+    StorageUsage:
+      type: object
+      required:
+        - bytesUsed
+        - assetCount
+      properties:
+        bytesUsed:
+          type: integer
+          format: int64
+          description: Total bytes used by all assets
+          example: 5242880
+        assetCount:
+          type: integer
+          format: int64
+          description: Number of assets in the Context Store
+          example: 12
+
+    # Prompt Context Schemas
+    ContextMapping:
+      type: object
+      required:
+        - id
+        - contextName
+        - assetId
+        - mimeType
+        - plpReference
+        - createdAt
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+          example: 7
+        contextName:
+          type: string
+          description: Context name used in #context() syntax
+          example: hero-image
+        assetId:
+          type: string
+          description: ID of the linked Context Store asset
+          example: logo-v2
+        mimeType:
+          type: string
+          description: MIME type of the linked asset
+          example: image/png
+        plpReference:
+          type: string
+          description: PLP reference URL
+          example: "plp://logo-v2"
+        createdAt:
+          type: string
+          format: date-time
+          description: When the mapping was created
+          example: "2024-01-15T10:30:00Z"
+
+    AddContextMappingInput:
+      type: object
+      required:
+        - contextName
+        - assetId
+      properties:
+        contextName:
+          type: string
+          description: Context name to use in #context() syntax
+          pattern: '^[a-zA-Z0-9_.-]{1,128}$'
+          example: hero-image
+        assetId:
+          type: string
+          description: ID of the Context Store asset to link
+          example: logo-v2
+
+    ResolveContextInput:
+      type: object
+      properties:
+        contextNames:
+          type: array
+          items:
+            type: string
+          description: Specific context names to resolve (null = all)
+          nullable: true
+          example: ["hero-image", "readme"]
+
+    ResolvedContext:
+      type: object
+      required:
+        - contextName
+        - assetId
+        - mimeType
+      properties:
+        contextName:
+          type: string
+          description: The context name
+          example: hero-image
+        assetId:
+          type: string
+          description: The resolved asset ID
+          example: logo-v2
+        mimeType:
+          type: string
+          description: MIME type of the content
+          example: image/png
+        dataUrl:
+          type: string
+          description: Base64 data URL containing the content (may be null if unavailable)
+          nullable: true
+          example: "data:image/png;base64,iVBORw0KGgo..."
+
+    # Prompt List Schemas
+    PromptListResponse:
+      type: object
+      required:
+        - content
+        - page
+        - totalElements
+        - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptSummary'
+          description: List of prompt summaries
+        page:
+          type: integer
+          description: Current page number (0-indexed)
+          example: 0
+        totalElements:
+          type: integer
+          description: Total number of prompts matching the query
+          example: 42
+        totalPages:
+          type: integer
+          description: Total number of pages
+          example: 3
+
+    PromptSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique prompt identifier (slug or name)
+          example: marketing/welcome-email
+        name:
+          type: string
+          description: Human-readable prompt name
+          example: Welcome Email
+        description:
+          type: string
+          description: Optional prompt description
+          nullable: true
+          example: Sent on user signup
+        visibility:
+          type: string
+          enum: [public, private]
+          description: Prompt visibility
+          example: public
+        createdAt:
+          type: string
+          format: date-time
+          description: When the prompt was created
+          example: "2024-01-15T10:30:00Z"
+
+    # Publish Schemas
+    PublishRequest:
+      type: object
+      required:
+        - versionNo
+      properties:
+        versionNo:
+          type: integer
+          description: The version number to publish
+          minimum: 1
+          example: 3
+
+    PublishResponse:
+      type: object
+      required:
+        - promptId
+        - versionNo
+      properties:
+        promptId:
+          type: string
+          description: The prompt identifier
+          example: marketing/welcome-email
+        versionId:
+          type: integer
+          description: Internal version record ID
+          example: 42
+        versionNo:
+          type: integer
+          description: The published version number
+          example: 3

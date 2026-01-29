@@ -13,6 +13,13 @@ from .client import (
     ImageContent,
     ContentPart,
     PromptContent,
+    # Context Store types
+    ContextStoreAsset,
+    AssetContent,
+    StorageUsage,
+    # Prompt Context types
+    ContextMapping,
+    ResolvedContext,
     # Helper functions
     is_multi_modal,
     normalize_content,
@@ -31,6 +38,13 @@ __all__ = [
     "ImageContent",
     "ContentPart",
     "PromptContent",
+    # Context Store types
+    "ContextStoreAsset",
+    "AssetContent",
+    "StorageUsage",
+    # Prompt Context types
+    "ContextMapping",
+    "ResolvedContext",
     # Helper functions
     "is_multi_modal",
     "normalize_content",
