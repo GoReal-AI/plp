@@ -314,6 +314,140 @@ curl -X DELETE https://prompts.example.com/v1/prompts/deprecated/old-prompt
 
 ---
 
+## 3.5. Deploy Prompt (POST)
+
+Deploys a specific version of a prompt to a named environment.
+
+### Endpoint
+
+```http
+POST /v1/prompts/{prompt_id}/deploy
+```
+
+### Request Body
+
+```json
+{
+  "versionNo": 3,
+  "environment": "production"
+}
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `versionNo` | Integer | REQUIRED | The version number to deploy |
+| `environment` | String | REQUIRED | Target environment name (e.g., `staging`, `production`) |
+
+### Response (200 OK)
+
+```json
+{
+  "promptId": "marketing/welcome-email",
+  "versionNo": 3,
+  "environment": "production",
+  "deployedAt": "2025-06-15T14:30:00Z"
+}
+```
+
+### Discovery
+
+Servers that support deployment MUST set `capabilities.deploy: true` in the discovery endpoint.
+
+---
+
+## 3.6. Evaluation Endpoints
+
+PLP provides endpoints for running prompt evaluations and managing test datasets. These enable automated testing of prompts against expected behaviors.
+
+### Discovery
+
+Servers that support evaluation MUST set `capabilities.evaluation: true` in the discovery endpoint.
+
+### Run Evaluation
+
+```http
+POST /v1/prompts/{prompt_id}/eval
+```
+
+Runs an evaluation suite against a prompt. The eval content (YAML format) is provided in the request body.
+
+#### Request Body
+
+```json
+{
+  "evalContent": "suite: Smoke Tests\ntests:\n  - name: basic test\n    ...",
+  "versionNo": 3,
+  "datasetId": "family-scenarios"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `evalContent` | String | REQUIRED | The `.eval` file content (YAML) |
+| `versionNo` | Integer | OPTIONAL | Prompt version (default: latest) |
+| `datasetId` | String | OPTIONAL | Reference to a saved dataset |
+
+#### Response (200 OK)
+
+```json
+{
+  "suiteName": "Smoke Tests",
+  "status": "fail",
+  "tests": [
+    {
+      "name": "renders family-friendly rules",
+      "status": "pass",
+      "assertions": [
+        { "operator": "contains", "status": "pass" }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
+    "durationMs": 3200
+  }
+}
+```
+
+### Save/Update Dataset
+
+```http
+PUT /v1/prompts/{prompt_id}/eval/datasets/{dataset_id}
+```
+
+Saves a dataset of test cases with optional golden responses.
+
+### Retrieve Dataset
+
+```http
+GET /v1/prompts/{prompt_id}/eval/datasets/{dataset_id}
+```
+
+Retrieves a saved evaluation dataset.
+
+#### Dataset Format
+
+```json
+{
+  "id": "family-scenarios",
+  "description": "Family-friendly scenarios",
+  "cases": [
+    {
+      "name": "family-comedy",
+      "input": { "companions": "Family", "genre": "Comedy" },
+      "expected": "I recommend Finding Nemo...",
+      "model": "gpt-4o"
+    }
+  ]
+}
+```
+
+---
+
 ## 4. HTTP Headers
 
 ### Required Request Headers
