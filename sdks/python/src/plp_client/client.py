@@ -319,6 +319,179 @@ class ResolvedContext:
         )
 
 
+# =============================================================================
+# Deploy Types
+# =============================================================================
+
+
+@dataclass
+class DeployResponse:
+    """Response from deploying a prompt version."""
+
+    prompt_id: str
+    version_no: int
+    environment: str
+    deployed_at: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DeployResponse":
+        """Create from dictionary."""
+        return cls(
+            prompt_id=data["promptId"],
+            version_no=data["versionNo"],
+            environment=data["environment"],
+            deployed_at=data["deployedAt"],
+        )
+
+
+# =============================================================================
+# Evaluation Types
+# =============================================================================
+
+
+@dataclass
+class AssertionResult:
+    """Result of a single assertion."""
+
+    operator: str
+    status: str  # "pass" | "fail" | "error"
+    expected: Optional[str] = None
+    actual: Optional[str] = None
+    message: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AssertionResult":
+        """Create from dictionary."""
+        return cls(
+            operator=data["operator"],
+            status=data["status"],
+            expected=data.get("expected"),
+            actual=data.get("actual"),
+            message=data.get("message"),
+        )
+
+
+@dataclass
+class EvalTestResult:
+    """Result of a single eval test."""
+
+    name: str
+    status: str  # "pass" | "fail" | "error"
+    assertions: List[AssertionResult]
+    duration_ms: Optional[float] = None
+    error: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EvalTestResult":
+        """Create from dictionary."""
+        return cls(
+            name=data["name"],
+            status=data["status"],
+            assertions=[AssertionResult.from_dict(a) for a in data["assertions"]],
+            duration_ms=data.get("durationMs"),
+            error=data.get("error"),
+        )
+
+
+@dataclass
+class EvalSummary:
+    """Summary of eval suite results."""
+
+    total: int
+    passed: int
+    failed: int
+    duration_ms: float
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EvalSummary":
+        """Create from dictionary."""
+        return cls(
+            total=data["total"],
+            passed=data["passed"],
+            failed=data["failed"],
+            duration_ms=data["durationMs"],
+        )
+
+
+@dataclass
+class EvalSuiteResult:
+    """Result of running an eval suite."""
+
+    suite_name: str
+    status: str  # "pass" | "fail" | "error"
+    tests: List[EvalTestResult]
+    summary: EvalSummary
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EvalSuiteResult":
+        """Create from dictionary."""
+        return cls(
+            suite_name=data["suiteName"],
+            status=data["status"],
+            tests=[EvalTestResult.from_dict(t) for t in data["tests"]],
+            summary=EvalSummary.from_dict(data["summary"]),
+        )
+
+
+@dataclass
+class EvalDatasetCase:
+    """A single test case in a dataset."""
+
+    name: str
+    input: Dict[str, Any]
+    expected: Optional[str] = None
+    model: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {"name": self.name, "input": self.input}
+        if self.expected is not None:
+            result["expected"] = self.expected
+        if self.model is not None:
+            result["model"] = self.model
+        if self.metadata is not None:
+            result["metadata"] = self.metadata
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EvalDatasetCase":
+        """Create from dictionary."""
+        return cls(
+            name=data["name"],
+            input=data["input"],
+            expected=data.get("expected"),
+            model=data.get("model"),
+            metadata=data.get("metadata"),
+        )
+
+
+@dataclass
+class EvalDataset:
+    """An evaluation dataset with test cases."""
+
+    id: str
+    cases: List[EvalDatasetCase]
+    description: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "id": self.id,
+            "cases": [c.to_dict() for c in self.cases],
+        }
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EvalDataset":
+        """Create from dictionary."""
+        return cls(
+            id=data["id"],
+            cases=[EvalDatasetCase.from_dict(c) for c in data["cases"]],
+            description=data.get("description"),
+        )
+
+
 class PLPError(Exception):
     """Exception raised for PLP-related errors."""
 
@@ -596,6 +769,105 @@ class PLPClient:
             "POST", f"/v1/prompts/{prompt_id}/context/_resolve", json=body
         )
         return {name: ResolvedContext.from_dict(value) for name, value in data.items()}
+
+    # =========================================================================
+    # Deploy Methods
+    # =========================================================================
+
+    def deploy(
+        self, prompt_id: str, version_no: int, environment: str
+    ) -> DeployResponse:
+        """
+        Deploy a prompt version to a named environment.
+
+        Args:
+            prompt_id: The prompt identifier
+            version_no: The version number to deploy
+            environment: Target environment (e.g., "staging", "production")
+
+        Returns:
+            DeployResponse with deployment details
+        """
+        data = self._request(
+            "POST",
+            f"/v1/prompts/{prompt_id}/deploy",
+            json={"versionNo": version_no, "environment": environment},
+        )
+        return DeployResponse.from_dict(data)
+
+    # =========================================================================
+    # Evaluation Methods
+    # =========================================================================
+
+    def run_eval(
+        self,
+        prompt_id: str,
+        eval_content: str,
+        version_no: Optional[int] = None,
+        dataset_id: Optional[str] = None,
+    ) -> EvalSuiteResult:
+        """
+        Run an evaluation suite against a prompt.
+
+        Args:
+            prompt_id: The prompt identifier
+            eval_content: The .eval file content (YAML format)
+            version_no: Optional prompt version (default: latest)
+            dataset_id: Optional reference to a saved dataset
+
+        Returns:
+            EvalSuiteResult with test results and summary
+        """
+        body: Dict[str, Any] = {"evalContent": eval_content}
+        if version_no is not None:
+            body["versionNo"] = version_no
+        if dataset_id is not None:
+            body["datasetId"] = dataset_id
+
+        data = self._request(
+            "POST",
+            f"/v1/prompts/{prompt_id}/eval",
+            json=body,
+        )
+        return EvalSuiteResult.from_dict(data)
+
+    def save_dataset(
+        self, prompt_id: str, dataset_id: str, dataset: EvalDataset
+    ) -> EvalDataset:
+        """
+        Save or update an eval dataset.
+
+        Args:
+            prompt_id: The prompt identifier
+            dataset_id: The dataset identifier
+            dataset: The dataset to save
+
+        Returns:
+            The saved dataset
+        """
+        data = self._request(
+            "PUT",
+            f"/v1/prompts/{prompt_id}/eval/datasets/{dataset_id}",
+            json=dataset.to_dict(),
+        )
+        return EvalDataset.from_dict(data)
+
+    def get_dataset(self, prompt_id: str, dataset_id: str) -> EvalDataset:
+        """
+        Retrieve an eval dataset.
+
+        Args:
+            prompt_id: The prompt identifier
+            dataset_id: The dataset identifier
+
+        Returns:
+            The dataset
+        """
+        data = self._request(
+            "GET",
+            f"/v1/prompts/{prompt_id}/eval/datasets/{dataset_id}",
+        )
+        return EvalDataset.from_dict(data)
 
     def __enter__(self) -> "PLPClient":
         """Context manager entry."""

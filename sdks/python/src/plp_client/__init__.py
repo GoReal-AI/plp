@@ -26,7 +26,7 @@ from .client import (
     get_text_content,
 )
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = [
     "PLPClient",
     "PLPError",

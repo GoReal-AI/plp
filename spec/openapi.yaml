@@ -26,6 +26,10 @@ tags:
     description: Server discovery and capabilities
   - name: prompts
     description: Prompt CRUD operations
+  - name: deploy
+    description: Prompt deployment to named environments
+  - name: evaluation
+    description: Prompt evaluation and testing
   - name: context-store
     description: Context Store for user's private assets (images, text files)
   - name: prompt-context
@@ -417,6 +421,217 @@ paths:
                 error: Version 1.0.0 not found
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Deploy Endpoint
+  /prompts/{prompt_id}/deploy:
+    post:
+      tags:
+        - deploy
+      summary: Deploy a prompt version to an environment
+      description: |
+        Deploys a specific version of a prompt to a named environment (e.g., staging, production).
+        This pins that version as the active version for the given environment.
+      operationId: deployPrompt
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+            example: marketing/welcome-email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployRequest'
+            example:
+              versionNo: 3
+              environment: production
+      responses:
+        '200':
+          description: Successfully deployed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployResponse'
+              example:
+                promptId: "marketing/welcome-email"
+                versionNo: 3
+                environment: "production"
+                deployedAt: "2025-06-15T14:30:00Z"
+        '400':
+          description: Invalid request (unknown environment or version)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Evaluation Endpoints
+  /prompts/{prompt_id}/eval:
+    post:
+      tags:
+        - evaluation
+      summary: Run an evaluation against a prompt
+      description: |
+        Runs an evaluation suite against a prompt. The eval content is provided as
+        YAML (the .eval file format) and optionally references a saved dataset.
+        Returns structured results with pass/fail status for each test and assertion.
+      operationId: runEval
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+            example: marketing/welcome-email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunEvalRequest'
+      responses:
+        '200':
+          description: Evaluation completed (may contain failures)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalSuiteResult'
+        '400':
+          description: Invalid eval content or configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /prompts/{prompt_id}/eval/datasets/{dataset_id}:
+    put:
+      tags:
+        - evaluation
+      summary: Save or update an eval dataset
+      description: |
+        Saves a dataset containing test cases with golden responses for evaluation.
+        Creates the dataset if it doesn't exist, or replaces it if it does.
+      operationId: saveEvalDataset
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+        - name: dataset_id
+          in: path
+          required: true
+          description: The dataset identifier
+          schema:
+            type: string
+            example: family-scenarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvalDataset'
+      responses:
+        '200':
+          description: Dataset updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalDataset'
+        '201':
+          description: Dataset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalDataset'
+        '400':
+          description: Invalid dataset format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - evaluation
+      summary: Retrieve an eval dataset
+      description: |
+        Retrieves a saved evaluation dataset by ID.
+      operationId: getEvalDataset
+      parameters:
+        - name: prompt_id
+          in: path
+          required: true
+          description: The prompt identifier
+          schema:
+            type: string
+        - name: dataset_id
+          in: path
+          required: true
+          description: The dataset identifier
+          schema:
+            type: string
+            example: family-scenarios
+      responses:
+        '200':
+          description: Dataset retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalDataset'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Prompt or dataset not found
           content:
             application/json:
               schema:
@@ -958,6 +1173,14 @@ components:
               type: boolean
               description: Whether Context Store is supported
               example: true
+            deploy:
+              type: boolean
+              description: Whether prompt deployment to environments is supported
+              example: true
+            evaluation:
+              type: boolean
+              description: Whether prompt evaluation/testing is supported
+              example: true
           additionalProperties: true
 
     # Context Store Schemas
@@ -1216,3 +1439,202 @@ components:
           type: integer
           description: The published version number
           example: 3
+
+    # Deploy Schemas
+    DeployRequest:
+      type: object
+      required:
+        - versionNo
+        - environment
+      properties:
+        versionNo:
+          type: integer
+          description: The version number to deploy
+          minimum: 1
+          example: 3
+        environment:
+          type: string
+          description: Target environment name (e.g., staging, production)
+          example: production
+
+    DeployResponse:
+      type: object
+      required:
+        - promptId
+        - versionNo
+        - environment
+        - deployedAt
+      properties:
+        promptId:
+          type: string
+          description: The prompt identifier
+          example: marketing/welcome-email
+        versionNo:
+          type: integer
+          description: The deployed version number
+          example: 3
+        environment:
+          type: string
+          description: The target environment
+          example: production
+        deployedAt:
+          type: string
+          format: date-time
+          description: When the deployment occurred
+          example: "2025-06-15T14:30:00Z"
+
+    # Evaluation Schemas
+    RunEvalRequest:
+      type: object
+      required:
+        - evalContent
+      properties:
+        evalContent:
+          type: string
+          description: The .eval file content (YAML format)
+        versionNo:
+          type: integer
+          description: Prompt version to evaluate (default latest)
+          minimum: 1
+        datasetId:
+          type: string
+          description: Reference to a saved dataset for test inputs
+
+    EvalSuiteResult:
+      type: object
+      required:
+        - suiteName
+        - status
+        - tests
+        - summary
+      properties:
+        suiteName:
+          type: string
+          description: Name of the eval suite
+          example: Smoke Tests
+        status:
+          type: string
+          enum: [pass, fail, error]
+          description: Overall suite status
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalTestResult'
+        summary:
+          type: object
+          required:
+            - total
+            - passed
+            - failed
+            - durationMs
+          properties:
+            total:
+              type: integer
+              description: Total number of tests
+              example: 5
+            passed:
+              type: integer
+              description: Number of passed tests
+              example: 4
+            failed:
+              type: integer
+              description: Number of failed tests
+              example: 1
+            durationMs:
+              type: number
+              description: Total duration in milliseconds
+              example: 3200
+
+    EvalTestResult:
+      type: object
+      required:
+        - name
+        - status
+        - assertions
+      properties:
+        name:
+          type: string
+          description: Test name
+          example: renders family-friendly rules
+        status:
+          type: string
+          enum: [pass, fail, error]
+          description: Test status
+        assertions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssertionResult'
+        durationMs:
+          type: number
+          description: Test duration in milliseconds
+        error:
+          type: string
+          description: Error message if status is error
+
+    AssertionResult:
+      type: object
+      required:
+        - operator
+        - status
+      properties:
+        operator:
+          type: string
+          description: The assertion operator used
+          example: contains
+        status:
+          type: string
+          enum: [pass, fail, error]
+          description: Assertion status
+        expected:
+          type: string
+          description: Expected value
+        actual:
+          type: string
+          description: Actual value
+        message:
+          type: string
+          description: Human-readable result message
+
+    EvalDataset:
+      type: object
+      required:
+        - id
+        - cases
+      properties:
+        id:
+          type: string
+          description: Unique dataset identifier
+          example: family-scenarios
+        description:
+          type: string
+          description: Human-readable description
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalDatasetCase'
+          description: Test cases with inputs and optional expected outputs
+
+    EvalDatasetCase:
+      type: object
+      required:
+        - name
+        - input
+      properties:
+        name:
+          type: string
+          description: Test case name
+          example: family-comedy
+        input:
+          type: object
+          additionalProperties: true
+          description: Prompt variables as key-value pairs
+        expected:
+          type: string
+          description: Golden/reference response
+        model:
+          type: string
+          description: Model used to generate the golden response
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata (tokens, latency, etc.)

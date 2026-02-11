@@ -106,6 +106,74 @@ export interface ResolvedContext {
 }
 
 // =============================================================================
+// Deploy Types
+// =============================================================================
+
+export interface DeployRequest {
+  versionNo: number;
+  environment: string;
+}
+
+export interface DeployResponse {
+  promptId: string;
+  versionNo: number;
+  environment: string;
+  deployedAt: string;
+}
+
+// =============================================================================
+// Evaluation Types
+// =============================================================================
+
+export interface RunEvalRequest {
+  evalContent: string;
+  versionNo?: number;
+  datasetId?: string;
+}
+
+export interface EvalSuiteResult {
+  suiteName: string;
+  status: 'pass' | 'fail' | 'error';
+  tests: EvalTestResult[];
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    durationMs: number;
+  };
+}
+
+export interface EvalTestResult {
+  name: string;
+  status: 'pass' | 'fail' | 'error';
+  assertions: AssertionResult[];
+  durationMs?: number;
+  error?: string;
+}
+
+export interface AssertionResult {
+  operator: string;
+  status: 'pass' | 'fail' | 'error';
+  expected?: string;
+  actual?: string;
+  message?: string;
+}
+
+export interface EvalDatasetCase {
+  name: string;
+  input: Record<string, unknown>;
+  expected?: string;
+  model?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EvalDataset {
+  id: string;
+  description?: string;
+  cases: EvalDatasetCase[];
+}
+
+// =============================================================================
 // Discovery Types
 // =============================================================================
 
@@ -117,6 +185,8 @@ export interface Discovery {
     list: boolean;
     search: boolean;
     contextStore?: boolean;
+    deploy?: boolean;
+    evaluation?: boolean;
   };
 }
 
@@ -403,6 +473,92 @@ export class PLPClient {
   async publish(promptId: string, versionNo: number): Promise<PublishResponse> {
     const body: PublishRequest = { versionNo };
     return this.requestJson<PublishResponse>('POST', `/v1/prompts/${promptId}/publish`, body);
+  }
+
+  // ===========================================================================
+  // Deploy Methods
+  // ===========================================================================
+
+  /**
+   * Deploy a prompt version to a named environment
+   * @param promptId - The prompt identifier
+   * @param versionNo - The version number to deploy
+   * @param environment - Target environment (e.g., "staging", "production")
+   * @returns Deploy response with timestamp
+   */
+  async deploy(
+    promptId: string,
+    versionNo: number,
+    environment: string
+  ): Promise<DeployResponse> {
+    const body: DeployRequest = { versionNo, environment };
+    return this.requestJson<DeployResponse>(
+      'POST',
+      `/v1/prompts/${promptId}/deploy`,
+      body
+    );
+  }
+
+  // ===========================================================================
+  // Evaluation Methods
+  // ===========================================================================
+
+  /**
+   * Run an evaluation suite against a prompt
+   * @param promptId - The prompt identifier
+   * @param evalContent - The .eval file content (YAML format)
+   * @param options - Optional version and dataset references
+   * @returns Evaluation suite results
+   */
+  async runEval(
+    promptId: string,
+    evalContent: string,
+    options?: { versionNo?: number; datasetId?: string }
+  ): Promise<EvalSuiteResult> {
+    const body: RunEvalRequest = {
+      evalContent,
+      ...options,
+    };
+    return this.requestJson<EvalSuiteResult>(
+      'POST',
+      `/v1/prompts/${promptId}/eval`,
+      body
+    );
+  }
+
+  /**
+   * Save or update an eval dataset
+   * @param promptId - The prompt identifier
+   * @param datasetId - The dataset identifier
+   * @param dataset - The dataset content
+   * @returns The saved dataset
+   */
+  async saveDataset(
+    promptId: string,
+    datasetId: string,
+    dataset: EvalDataset
+  ): Promise<EvalDataset> {
+    return this.requestJson<EvalDataset>(
+      'PUT',
+      `/v1/prompts/${promptId}/eval/datasets/${datasetId}`,
+      dataset
+    );
+  }
+
+  /**
+   * Retrieve an eval dataset
+   * @param promptId - The prompt identifier
+   * @param datasetId - The dataset identifier
+   * @returns The dataset
+   */
+  async getDataset(
+    promptId: string,
+    datasetId: string
+  ): Promise<EvalDataset> {
+    return this.request<EvalDataset>(
+      'GET',
+      `/v1/prompts/${promptId}/eval/datasets/${datasetId}`
+    );
   }
 
   // ===========================================================================
